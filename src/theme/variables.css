@@ -9,7 +9,6 @@
 /* @import "@ionic/angular/css/palettes/dark.class.css"; */
 @import '@ionic/angular/css/palettes/dark.system.css';
 
-/* ion-button {
-  --border-radius: 8px;
+ion-button {
   text-transform: none;
-} */
+}
