@@ -1,0 +1,32 @@
+export interface Category {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+  isDefault: boolean;
+  parentId?: string;
+}
+
+// export const CategoryMapper: Mapper<Category, CategoryEntity> = {
+//   toEntity(model: Category): CategoryEntity {
+//     return {
+//       id: model.id,
+//       name: model.name,
+//       icon: model.icon || 'help-outline',
+//       color: model.color || '#64748b',
+//       is_default: !!model.isDefault,
+//       parent_id: model.parentId || undefined,
+//     };
+//   },
+
+//   toModel(entity: CategoryEntity): Category {
+//     return {
+//       id: entity.id,
+//       name: entity.name,
+//       icon: entity.icon || 'help-outline',
+//       color: entity.color || '#64748b',
+//       isDefault: !!entity.is_default,
+//       parentId: entity.parent_id || undefined,
+//     };
+//   },
+// };

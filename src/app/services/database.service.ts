@@ -1,6 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { CategoryEntity } from '../entities/category';
-import { addDoc, collection, getDocs, query, QueryConstraint } from 'firebase/firestore';
+import { collection, getDocs, query, QueryConstraint } from 'firebase/firestore';
 import { FirebaseService } from './firebase.service';
 import { Entities } from '../entities';
 
@@ -15,21 +14,21 @@ export class DatabaseService {
   }
 
   //#region Categories
-  async getCategories(): Promise<CategoryEntity[]> {
-    return this.get(Entities.Categories);
-  }
+  // async getCategories(): Promise<Category[]> {
+  //   return this.get(Entities.Categories).then((entities) => entities.map(CategoryMapper.toModel));
+  // }
 
-  async addCategory(data: Omit<CategoryEntity, 'id'>): Promise<string> {
-    const categoryCol = collection(this._database, Entities.Categories);
+  // async addCategory(data: Omit<Category, 'id'>): Promise<string> {
+  //   const categoryCol = collection(this._database, Entities.Categories);
 
-    try {
-      const docRef = await addDoc(categoryCol, data);
-      return docRef.id;
-    } catch (error) {
-      console.error('Error adding category: ', error);
-      throw error;
-    }
-  }
+  //   try {
+  //     const docRef = await addDoc(categoryCol, CategoryMapper.toModel(data));
+  //     return docRef.id;
+  //   } catch (error) {
+  //     console.error('Error adding category: ', error);
+  //     throw error;
+  //   }
+  // }
   //#endregion Categories
 
   //#region Private methods

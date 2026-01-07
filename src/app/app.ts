@@ -3,55 +3,20 @@ import { RouterOutlet } from '@angular/router';
 import { AuthService } from './services/auth.service';
 import { NotificationReader } from 'notification-reader';
 import { AiService } from './services/ai.service';
-import { JsonPipe } from '@angular/common';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Transaction } from './models/transaction';
 import { PatternEntity } from './entities/pattern';
 import { TransactionType } from './entities/transaction';
 import { DatabaseService } from './services/database.service';
+import { IonButton } from '@ionic/angular/standalone';
+import { Categories } from './components/categories';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, JsonPipe],
+  imports: [RouterOutlet, IonButton, Categories],
   template: `
-    <p class="text-red-500 mt-10">{{ message() }}</p>
-
-    <p>Version 1.0</p>
-
-    <button
-      class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full mr-2"
-      (click)="exportDevNotifications()"
-    >
-      Export to file
-    </button>
-
-    <button
-      class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full"
-      (click)="clearDevNotifications()"
-    >
-      Clear
-    </button>
-
-    <div class="border-b my-4"></div>
-
-    Notifications:
-    <ul>
-      @for (item of notifications(); track item; let index = $index) {
-        <li>{{ index + 1 }}. {{ item }}</li>
-        <div class="not-last:border-b border-dashed my-1"></div>
-      }
-    </ul>
-
-    <div class="border-b my-4"></div>
-
-    Analyzed info:
-    <ul>
-      @for (item of analyzedObjs(); track item; let index = $index) {
-        <li>{{ index + 1 }}. {{ item | json }}</li>
-        <div class="not-last:border-b border-dashed my-1"></div>
-      }
-    </ul>
+    <categories></categories>
 
     <router-outlet />
   `,
@@ -118,103 +83,7 @@ export class App implements AfterViewInit {
     return new Date(year, month - 1, day, hour, min);
   }
 
-  async ngOnInit() {
-    // await this._databaseService.addCategory({ name: 'Ăn uống', is_default: true });
-    console.log(await this._databaseService.getCategories());
-    // if (!(await this._authService.checkBiometric())) {
-    //   this.message.set('Không thể đăng nhập');
-    //   return;
-    // }
+  async ngOnInit() {}
 
-    // const isVerified = await this._authService.verify();
-    // this.message.set(isVerified ? 'Đã đăng nhập' : 'Chưa đăng nhập');
-
-    this.askPermission();
-    this.listenNotifications();
-  }
-
-  async ngAfterViewInit() {
-    // this.notifications.update((list) => [
-    //   '{"packageName":"com.vnpay.bidv","title":"Thông báo BIDV","text":"Thời gian giao dịch: 16:43 06/01/2026\\nTài khoản thanh toán: 6201178820\\nSố tiền GD: -10,000 VND\\nSố dư cuối: 10,902,324 VND\\nNội dung giao dịch: MB-TKThe 0004100022679006_NGUYEN THI VAN ANH, tai OCB. ND TU CAO DUY Chuyen tien -CTLNHIDO000013992840879\\nMã giao dịch: 0833KVsA-85xDcYQ33"}',
-    //   ...list,
-    // ]);
-    // const analyzed = await this._aiService.prompt(
-    //   '{"packageName":"com.vnpay.bidv","title":"Thông báo BIDV","text":"Thời gian giao dịch: 16:43 06/01/2026\\nTài khoản thanh toán: 6201178820\\nSố tiền GD: -10,000 VND\\nSố dư cuối: 10,902,324 VND\\nNội dung giao dịch: MB-TKThe 0004100022679006_NGUYEN THI VAN ANH, tai OCB. ND TU CAO DUY Chuyen tien -CTLNHIDO000013992840879\\nMã giao dịch: 0833KVsA-85xDcYQ33"}',
-    // );
-    // if (analyzed) {
-    //   try {
-    //     this.analyzedObjs.update((list) => [JSON.parse(analyzed), ...list]);
-    //   } catch {
-    //     alert(`Cannot parse, raw response: ${analyzed}`);
-    //   }
-    // }
-  }
-
-  async askPermission() {
-    console.log('Calling requestPermission...');
-    await NotificationReader.requestPermission();
-  }
-
-  async listenNotifications() {
-    NotificationReader.addListener('notificationReceived', async (data: any) => {
-      const raw = JSON.stringify(data);
-
-      this.notifications.update((list) => [raw, ...list]);
-
-      this.saveNotification(raw);
-
-      const analyzed = await this._aiService.prompt(raw);
-
-      if (analyzed) {
-        try {
-          this.analyzedObjs.update((list) => [JSON.parse(analyzed), ...list]);
-        } catch {
-          alert(`Cannot parse, raw response: ${analyzed}`);
-        }
-      }
-    });
-  }
-
-  private readonly DEV_KEY = '__DEV_NOTIFICATIONS__';
-
-  private saveNotification(raw: string) {
-    const list = JSON.parse(localStorage.getItem(this.DEV_KEY) ?? '[]');
-    list.unshift({
-      raw,
-      at: Date.now(),
-    });
-    localStorage.setItem(this.DEV_KEY, JSON.stringify(list));
-  }
-
-  async exportDevNotifications() {
-    try {
-      const data = localStorage.getItem(this.DEV_KEY);
-
-      if (!data) return;
-
-      const fileName = `notifications-${Date.now()}.json`;
-
-      const file = await Filesystem.writeFile({
-        path: fileName,
-        data,
-        directory: Directory.Cache, // dùng Cache để dễ share
-        encoding: Encoding.UTF8,
-      });
-
-      await Share.share({
-        title: 'Export notifications',
-        text: 'Dev notifications export',
-        files: [file.uri], // dùng uri, không phải tên file
-      });
-    } catch (error) {
-      console.error(error);
-      alert(error);
-    }
-  }
-
-  clearDevNotifications() {
-    localStorage.removeItem(this.DEV_KEY);
-    this.notifications.set([]);
-    this.analyzedObjs.set([]);
-  }
+  async ngAfterViewInit() {}
 }
