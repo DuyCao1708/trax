@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { FirebaseApp, initializeApp } from 'firebase/app';
 import { environment } from '../../environments/environment';
 import { Firestore, getFirestore } from 'firebase/firestore';
+import { Auth, getAuth } from 'firebase/auth';
 import {
   GenerativeModel,
   getAI,
@@ -18,12 +19,14 @@ export class FirebaseService {
 
   readonly database: Firestore;
   readonly generativeModel: GenerativeModel;
+  readonly auth: Auth;
 
   constructor() {
     this._app = initializeApp(environment.firebase);
 
     this.database = getFirestore(this._app);
     this.generativeModel = this.getGenerativeModel();
+    this.auth = getAuth(this._app);
   }
 
   private getGenerativeModel() {

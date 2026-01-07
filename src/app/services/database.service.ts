@@ -7,11 +7,7 @@ import { Entities } from '../entities';
   providedIn: 'root',
 })
 export class DatabaseService {
-  private _firebaseService = inject(FirebaseService);
-
-  private get _database() {
-    return this._firebaseService.database;
-  }
+  private _database = inject(FirebaseService).database;
 
   //#region Categories
   // async getCategories(): Promise<Category[]> {

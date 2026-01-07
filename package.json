@@ -47,6 +47,7 @@
     "@angular/build": "^21.0.4",
     "@angular/cli": "^21.0.4",
     "@angular/compiler-cli": "^21.0.0",
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "latest",
     "@ionic/angular-toolkit": "latest",
     "@tailwindcss/postcss": "^4.1.12",

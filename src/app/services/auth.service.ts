@@ -1,10 +1,57 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
+import { FirebaseService } from './firebase.service';
+import {
+  FacebookAuthProvider,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+  User,
+} from 'firebase/auth';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
+  private _auth = inject(FirebaseService).auth;
+
+  currentUser = signal<User | null>(null);
+
+  constructor() {
+    onAuthStateChanged(this._auth, (user) => {
+      this.currentUser.set(user);
+      if (user) {
+        console.log('User logged in:', user.displayName);
+      } else {
+        console.log('User logged out');
+      }
+    });
+  }
+
+  async loginWithGoogle() {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(this._auth, provider);
+      return result.user;
+    } catch (error) {
+      console.error('Google login error:', error);
+      throw error;
+    }
+  }
+
+  // Đăng nhập bằng Facebook
+  async loginWithFacebook() {
+    const provider = new FacebookAuthProvider();
+    try {
+      const result = await signInWithPopup(this._auth, provider);
+      return result.user;
+    } catch (error) {
+      console.error('Facebook login error:', error);
+      throw error;
+    }
+  }
+
   async checkBiometric() {
     const result = await NativeBiometric.isAvailable();
 
@@ -13,6 +60,14 @@ export class AuthService {
     }
 
     return result.isAvailable;
+  }
+
+  async logout() {
+    try {
+      await signOut(this._auth);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   }
 
   async verify() {
