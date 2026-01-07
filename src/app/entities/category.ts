@@ -1,5 +1,6 @@
 export interface CategoryEntity {
-  id: number;
+  id: string;
   name: string;
-  parent_id: number;
+  is_default: boolean;
+  parent_id?: number;
 }

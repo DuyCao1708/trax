@@ -119,6 +119,7 @@ export class App implements AfterViewInit {
   }
 
   async ngOnInit() {
+    // await this._databaseService.addCategory({ name: 'Ăn uống', is_default: true });
     console.log(await this._databaseService.getCategories());
     // if (!(await this._authService.checkBiometric())) {
     //   this.message.set('Không thể đăng nhập');

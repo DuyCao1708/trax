@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { CategoryEntity } from '../entities/category';
-import { collection, getDocs, query } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query, QueryConstraint } from 'firebase/firestore';
 import { FirebaseService } from './firebase.service';
 import { Entities } from '../entities';
 
@@ -14,24 +14,45 @@ export class DatabaseService {
     return this._firebaseService.database;
   }
 
+  //#region Categories
   async getCategories(): Promise<CategoryEntity[]> {
-    const collections = collection(this._database, Entities.Categories);
+    return this.get(Entities.Categories);
+  }
 
-    const q = query(collections);
+  async addCategory(data: Omit<CategoryEntity, 'id'>): Promise<string> {
+    const categoryCol = collection(this._database, Entities.Categories);
+
+    try {
+      const docRef = await addDoc(categoryCol, data);
+      return docRef.id;
+    } catch (error) {
+      console.error('Error adding category: ', error);
+      throw error;
+    }
+  }
+  //#endregion Categories
+
+  //#region Private methods
+  private async get<T>(entity: Entities, ...queryConstraints: QueryConstraint[]): Promise<T[]> {
+    const collections = collection(this._database, entity);
+
+    const q = query(collections, ...queryConstraints);
 
     try {
       const querySnapshot = await getDocs(q);
 
-      const categories: CategoryEntity[] = [];
+      const data: T[] = [];
 
       querySnapshot.forEach((doc) => {
-        categories.push(doc.data() as CategoryEntity);
+        const item = { id: doc.id, ...doc.data() } as T;
+        data.push(item);
       });
 
-      return categories;
+      return data;
     } catch (error) {
-      console.error('Error getting categories: ', error);
+      console.error('Error getting entities: ', error);
       throw error;
     }
   }
+  //#endregion Private methods
 }
