@@ -16,7 +16,7 @@ import { CategoryService } from '../services/category.service';
   template: `
     <ion-list class="relative">
       <ion-list-header>
-        <ion-label class="ms-4 text-lg text-gray-500">Categories</ion-label>
+        <ion-label class="ms-4 text-gray-500">Categories</ion-label>
       </ion-list-header>
 
       @if (!categories().length) {
