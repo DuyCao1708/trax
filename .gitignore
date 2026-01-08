@@ -43,3 +43,4 @@ __screenshots__/
 Thumbs.db
 
 src/environments/environment.development.ts
+android/app/google-services.json

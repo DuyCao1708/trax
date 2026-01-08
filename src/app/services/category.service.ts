@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { Category } from '../models/category';
 import { Preferences } from '@capacitor/preferences';
+import { STORAGE_KEYS } from '../constants/storage-keys';
 
 @Injectable({
   providedIn: 'root',
@@ -8,8 +9,6 @@ import { Preferences } from '@capacitor/preferences';
 export class CategoryService {
   private _categories = signal<Category[]>([]);
   readonly categories = this._categories.asReadonly();
-
-  private readonly STORAGE_KEY = 'categories';
 
   constructor() {
     this.loadInitialData();
@@ -21,7 +20,7 @@ export class CategoryService {
   }
 
   private async loadInitialData() {
-    const { value } = await Preferences.get({ key: this.STORAGE_KEY });
+    const { value } = await Preferences.get({ key: STORAGE_KEYS.CATEGORIES });
 
     if (value) {
       this._categories.set(JSON.parse(value));
@@ -34,7 +33,7 @@ export class CategoryService {
 
   private async saveToStorage(data: Category[]) {
     await Preferences.set({
-      key: this.STORAGE_KEY,
+      key: STORAGE_KEYS.CATEGORIES,
       value: JSON.stringify(data),
     });
   }

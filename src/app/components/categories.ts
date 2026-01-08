@@ -8,8 +8,6 @@ import {
   IonIcon,
   IonSpinner,
 } from '@ionic/angular/standalone';
-import { addIcons } from 'ionicons';
-import * as allIcons from 'ionicons/icons';
 import { CategoryService } from '../services/category.service';
 
 @Component({
@@ -43,7 +41,5 @@ import { CategoryService } from '../services/category.service';
 export class Categories {
   protected readonly categories = inject(CategoryService).categories;
 
-  constructor() {
-    addIcons(allIcons);
-  }
+  constructor() {}
 }
