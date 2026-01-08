@@ -13,6 +13,7 @@ import {
 import { AuthService } from './services/auth.service';
 import { addIcons } from 'ionicons';
 import * as allIcons from 'ionicons/icons';
+import { PrivacyScreen } from '@capacitor/privacy-screen';
 
 @Component({
   selector: 'app-root',
@@ -73,6 +74,7 @@ export class App implements AfterViewInit {
 
   constructor() {
     addIcons(allIcons);
+    PrivacyScreen.enable();
   }
 
   async ngOnInit() {
