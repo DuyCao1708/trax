@@ -1,6 +1,6 @@
 export const STORAGE_KEYS = {
   CATEGORIES: 'trax_categories',
-  AUTH_CREDENTIAL: 'trax_auth',
+  CACHED_USER: 'trax_user',
 };
 
 export const SETTINGS_KEYS = {

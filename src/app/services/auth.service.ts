@@ -9,11 +9,9 @@ import {
   User,
 } from 'firebase/auth';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
-import { LoadingStatus } from '../models/loading-status';
 import { Preferences } from '@capacitor/preferences';
-import { SETTINGS_KEYS, STORAGE_KEYS } from '../constants/storage-keys';
+import { SETTINGS_KEYS, STORAGE_KEYS } from '../constants/index.ts';
 import { AlertController } from '@ionic/angular/standalone';
-import { Capacitor } from '@capacitor/core';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { AppUser } from '../entities/app-user';
 import { Entities } from '../entities';
@@ -30,217 +28,136 @@ export class AuthService {
 
   currentUser = signal<User | null>(null);
 
-  status = signal<LoadingStatus>('idle');
+  async initializeAuth() {
+    const { value: cachedUser } = await Preferences.get({ key: STORAGE_KEYS.CACHED_USER });
 
-  constructor() {
-    this.status.set('loading');
+    if (!cachedUser) {
+      return;
+    }
 
-    onAuthStateChanged(this._auth, async (user) => this.handleUserChanged(user));
+    const user = JSON.parse(cachedUser);
+    this.currentUser.set(user);
+
+    const { value: isBioEnabeld } = await Preferences.get({ key: SETTINGS_KEYS.USE_BIOMETRIC });
+    if (isBioEnabeld === 'true') {
+      const isVerified = await this.verifyBiometric();
+
+      if (!isVerified) {
+        await this.logout();
+        return;
+      }
+    }
+
+    onAuthStateChanged(this._auth, (fbUser) => {
+      if (fbUser) {
+        this.updateUserCache(fbUser);
+      } else if (this.currentUser()) {
+        this.logout();
+      }
+    });
   }
 
   async loginWithGoogle() {
-    try {
-      this.status.set('loading');
+    const result = await FirebaseAuthentication.signInWithGoogle();
+    const idToken = result.credential?.idToken;
+    if (idToken) {
+      const credential = GoogleAuthProvider.credential(idToken);
+      const userCredential = await signInWithCredential(this._auth, credential);
+      await this.updateUserCache(userCredential.user);
+      this.currentUser.set(userCredential.user);
 
-      const result = await FirebaseAuthentication.signInWithGoogle();
-      const idToken = result.credential?.idToken;
-      if (idToken) {
-        const credential = GoogleAuthProvider.credential(idToken);
+      await this.restoreSettingsFromCloud(userCredential.user);
 
-        await signInWithCredential(this._auth, credential);
-      } else {
-        this.status.set('loaded');
-      }
-    } catch (error) {
-      this.status.set('loaded');
-      console.error('Google login error:', error);
-      throw error;
+      this._router.navigate(['/home']);
     }
   }
 
   async logout() {
-    try {
-      this.status.set('loading');
-      await signOut(this._auth);
-
-      await Preferences.remove({ key: SETTINGS_KEYS.USE_BIOMETRIC });
-
-      if (Capacitor.isNativePlatform()) {
-        await this.deleteBiometricCredentials();
-      }
-    } catch (error) {
-      this.status.set('loaded');
-      console.error('Logout error:', error);
-    }
+    await signOut(this._auth);
+    await Preferences.remove({ key: STORAGE_KEYS.CACHED_USER });
+    await Preferences.remove({ key: SETTINGS_KEYS.USE_BIOMETRIC });
+    this.currentUser.set(null);
+    this._router.navigate(['/login']);
   }
 
   async toggleBiometric(isEnabled: boolean) {
     const user = this.currentUser();
-    if (!user) return;
+    if (!user) return false;
 
     if (isEnabled) {
       const verified = await this.verifyBiometric();
-      if (verified) {
-        await this.saveBiometricCredentials(user);
-        await Preferences.set({ key: SETTINGS_KEYS.USE_BIOMETRIC, value: 'true' });
-      } else {
-        return;
-      }
+      if (!verified) return false;
+
+      await Preferences.set({ key: SETTINGS_KEYS.USE_BIOMETRIC, value: 'true' });
     } else {
-      await this.deleteBiometricCredentials();
       await Preferences.set({ key: SETTINGS_KEYS.USE_BIOMETRIC, value: 'false' });
     }
 
-    await this.updateBiometricStatus(this.currentUser()!.uid, isEnabled);
+    await this.updateBiometricStatusOnCloud(user.uid, isEnabled);
+    return true;
   }
 
   //#region Private methods
-  private async handleUserChanged(user: User | null) {
-    if (!user) {
-      this.currentUser.set(null);
-      this.status.set('loaded');
-      return;
-    }
-
-    const { value } = await Preferences.get({ key: SETTINGS_KEYS.USE_BIOMETRIC });
-
-    if (value === 'true') {
-      const credentials = await this.getStoredCredentials();
-
-      if (credentials && credentials.password === user.uid) {
-        this.completeLogin(user);
-      } else {
-        await this.logout();
-      }
-
-      return;
-    }
-
-    if (value === null) {
-      const userDoc = await getDoc(doc(this._database, `${Entities.Users}/${user.uid}`));
-      const userData = userDoc.data() as AppUser;
-
-      if (userData?.biometric_enabled) {
-        const verified = await this.verifyBiometric();
-
-        if (verified) {
-          await this.saveBiometricCredentials(user);
-          await Preferences.set({ key: SETTINGS_KEYS.USE_BIOMETRIC, value: 'true' });
-        }
-      } else {
-        this.askToEnableBiometric(user);
-      }
-    }
-
-    this.completeLogin(user);
-  }
-
-  private async checkBiometric() {
+  private async verifyBiometric(): Promise<boolean> {
     const result = await NativeBiometric.isAvailable();
+    if (!result.isAvailable) return true;
 
-    if (result.isAvailable) {
-      console.log(`Biometric type: ${result.biometryType}`);
-    }
-
-    return result.isAvailable;
-  }
-
-  private async verifyBiometric() {
-    const verified = await NativeBiometric.verifyIdentity({
-      reason: 'For secure access to your account',
+    return await NativeBiometric.verifyIdentity({
       title: 'Xác thực đó là bạn',
       description: 'Vui lòng quét vân tay để tiếp tục.',
     })
       .then(() => true)
       .catch(() => false);
-
-    return verified;
   }
 
-  private async askToEnableBiometric(user: User) {
-    const isAvailable = await this.checkBiometric();
-    if (!isAvailable) return;
+  private async updateUserCache(user: User) {
+    const profile = {
+      uid: user.uid,
+      email: user.email,
+    };
+    await Preferences.set({ key: STORAGE_KEYS.CACHED_USER, value: JSON.stringify(profile) });
+  }
+
+  private async updateBiometricStatusOnCloud(uid: string, isEnabled: boolean) {
+    const userDocRef = doc(this._database, `${Entities.Users}/${uid}`);
+    await setDoc(
+      userDocRef,
+      { biometric_enabled: isEnabled, updatedAt: new Date().toISOString() },
+      { merge: true },
+    );
+  }
+
+  private async restoreSettingsFromCloud(user: User) {
+    try {
+      const userDoc = await getDoc(doc(this._database, `${Entities.Users}/${user.uid}`));
+      const userData = userDoc.data() as AppUser;
+
+      if (userData?.biometric_enabled) {
+        await Preferences.set({ key: SETTINGS_KEYS.USE_BIOMETRIC, value: 'true' });
+      } else {
+        this.askToEnableBiometric();
+      }
+    } catch (e) {
+      console.error('Restore settings failed', e);
+    }
+  }
+
+  private async askToEnableBiometric() {
+    const res = await NativeBiometric.isAvailable();
+    if (!res.isAvailable) return;
 
     const alert = await this._alert.create({
       header: 'Bảo mật vân tay',
-      message: 'Bạn có muốn sử dụng vân tay để đăng nhập nhanh cho lần sau không?',
+      message: 'Bạn có muốn dùng vân tay để mở khóa nhanh lần sau không?',
       buttons: [
-        {
-          text: 'Để sau',
-          role: 'cancel',
-        },
+        { text: 'Để sau', role: 'cancel' },
         {
           text: 'Đồng ý',
-          handler: async () => {
-            const verified = await this.verifyBiometric();
-
-            if (verified) {
-              await this.saveBiometricCredentials(user);
-              await Preferences.set({ key: SETTINGS_KEYS.USE_BIOMETRIC, value: 'true' });
-              await this.updateBiometricStatus(user.uid, true);
-            }
-          },
+          handler: () => this.toggleBiometric(true),
         },
       ],
     });
-
     await alert.present();
-  }
-
-  private async updateBiometricStatus(uid: string, isEnabled: boolean) {
-    try {
-      const userDocRef = doc(this._database, `${Entities.Users}/${uid}`);
-
-      const user: AppUser = {
-        biometric_enabled: isEnabled,
-        updatedAt: new Date().toISOString(),
-      };
-
-      await setDoc(userDocRef, user, { merge: true });
-    } catch (error) {
-      console.error('Sync to Cloud failed:', error);
-    }
-  }
-
-  private async saveBiometricCredentials(user: User) {
-    try {
-      await NativeBiometric.setCredentials({
-        username: user.email || '',
-        password: user.uid,
-        server: STORAGE_KEYS.AUTH_CREDENTIAL,
-      });
-    } catch (error) {
-      console.error('Stored credential failed:', error);
-    }
-  }
-
-  private async getStoredCredentials() {
-    try {
-      const isVerified = await this.verifyBiometric();
-
-      if (!isVerified) return null;
-
-      const credentials = await NativeBiometric.getCredentials({
-        server: STORAGE_KEYS.AUTH_CREDENTIAL,
-      });
-
-      return credentials;
-    } catch (error) {
-      console.error('Cannot get credential:', error);
-      return null;
-    }
-  }
-
-  private async deleteBiometricCredentials() {
-    await NativeBiometric.deleteCredentials({
-      server: STORAGE_KEYS.AUTH_CREDENTIAL,
-    });
-  }
-
-  private completeLogin(user: User) {
-    this.currentUser.set(user);
-    this.status.set('loaded');
-    this._router.navigate(['/home']);
   }
   //#endregion Private methods
 }
