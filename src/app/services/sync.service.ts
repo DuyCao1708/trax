@@ -6,6 +6,7 @@ import { Entities, SyncStatus } from '../entities';
 import { collection, doc, getDocs, orderBy, query, setDoc, where } from 'firebase/firestore';
 import { SETTINGS_KEYS } from '../constants/index.ts';
 import { Network } from '@capacitor/network';
+import { ToastController } from '@ionic/angular/standalone';
 
 @Injectable({
   providedIn: 'root',
@@ -13,6 +14,7 @@ import { Network } from '@capacitor/network';
 export class SyncService {
   private _databaseService = inject(DatabaseService);
   private _firestore = inject(FirebaseService).database;
+  private _toastCtrl = inject(ToastController);
 
   private _isSyncing = false;
   private _syncingTables: { [key: string]: boolean } = {};
@@ -28,10 +30,20 @@ export class SyncService {
     this._isSyncing = true;
 
     try {
-      for (const tableName of Object.values(Entities)) {
+      for (const tableName of Object.values(Entities).filter(
+        (entity) => ![Entities.Users].includes(entity),
+      )) {
         await this.pushTable(tableName, userId);
         await this.pullTable(tableName, userId);
       }
+    } catch (error) {
+      const toast = await this._toastCtrl.create({
+        message: error as string,
+        duration: 2000,
+        color: 'danger',
+        position: 'bottom',
+      });
+      await toast.present();
     } finally {
       this._isSyncing = false;
     }

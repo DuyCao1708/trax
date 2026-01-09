@@ -1,8 +1,10 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Wallet } from '../models/wallet';
 import { DecimalPipe } from '@angular/common';
 import { IonButton, IonIcon } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
+import { WalletService } from '../services/wallet.service';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'wallets',
@@ -66,9 +68,25 @@ import { RouterLink } from '@angular/router';
   `,
 })
 export class Wallets {
+  private _walletService = inject(WalletService);
+  private _authService = inject(AuthService);
+
   wallets = signal<Wallet[]>([]);
 
   selected = signal<string>('1');
 
   isSelectedAll = signal<boolean>(false);
+
+  async ngOnInit() {
+    const user = this._authService.currentUser();
+    if (!user) return;
+
+    const wallets = await this._walletService.getAll(user.uid);
+
+    this.wallets.set(wallets);
+
+    if (wallets.length) {
+      this.selected.set(wallets[0].id);
+    }
+  }
 }

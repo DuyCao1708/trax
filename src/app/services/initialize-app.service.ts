@@ -19,6 +19,11 @@ export class InitializeAppService {
       await this.initializeDatabase();
       await this._authService.initializeAuth();
 
+      const status = await Network.getStatus();
+      if (status.connected) {
+        this.triggerSync();
+      }
+
       this.listenOnNetworkChanges();
     } catch (error) {
       console.error('App init error:', error);
@@ -28,10 +33,7 @@ export class InitializeAppService {
   private listenOnNetworkChanges() {
     Network.addListener('networkStatusChange', (status) => {
       if (status.connected) {
-        const userId = this._authService.currentUser()?.uid;
-        if (userId) {
-          this._syncService.syncAll(userId);
-        }
+        this.triggerSync();
       }
     });
   }
@@ -47,6 +49,13 @@ export class InitializeAppService {
       await this._databaseService.initializeDatabase();
     } catch (error) {
       console.error('Database init error:', error);
+    }
+  }
+
+  private triggerSync() {
+    const userId = this._authService.currentUser()?.uid;
+    if (userId) {
+      this._syncService.syncAll(userId);
     }
   }
 }

@@ -5,7 +5,7 @@ export const APP_UPGRADES = [
     toVersion: 1,
     statements: [
       `CREATE TABLE IF NOT EXISTS ${Entities.Wallets} (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         balance REAL DEFAULT 0,
         currency TEXT NOT NULL,

@@ -3,6 +3,7 @@ import { DatabaseService } from './database.service';
 import { WalletEntity } from '../entities/wallet';
 import { Entities, SyncStatus } from '../entities';
 import { SyncService } from './sync.service';
+import { v4 as uuid } from 'uuid';
 
 @Injectable({
   providedIn: 'root',
@@ -11,19 +12,15 @@ export class WalletService {
   private _databaseService = inject(DatabaseService);
   private _syncService = inject(SyncService);
 
-  constructor() {
-    const sql = `UPDATE wallets SET is_deleted = 0, sync_status = 2;`;
-    const result = this._databaseService.query(sql);
-  }
-
-  async getAll(userId: string) {
+  async getAll(userId: string): Promise<WalletEntity[]> {
     const sql = `SELECT * FROM ${Entities.Wallets} WHERE user_id = ? AND is_deleted = 0 ORDER BY updated_at DESC`;
     const result = await this._databaseService.query(sql, [userId]);
     return result.values || [];
   }
 
   async create(data: { name: string; balance: number; currency: string }, userId: string) {
-    const newWallet: Omit<WalletEntity, 'id'> = {
+    const newWallet: WalletEntity = {
+      id: uuid(),
       ...data,
       user_id: userId,
       updated_at: Date.now(),
@@ -31,9 +28,10 @@ export class WalletService {
       sync_status: SyncStatus.Pending,
     };
 
-    const sql = `INSERT INTO ${Entities.Wallets} (name, balance, currency, user_id, updated_at, is_deleted, sync_status) VALUES (?,?,?,?,?,?,?)`;
+    const sql = `INSERT INTO ${Entities.Wallets} (id, name, balance, currency, user_id, updated_at, is_deleted, sync_status) VALUES (?,?,?,?,?,?,?,?)`;
 
     await this._databaseService.execute(sql, [
+      newWallet.id,
       newWallet.name,
       newWallet.balance,
       newWallet.currency,

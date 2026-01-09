@@ -48,7 +48,8 @@
     "rxjs": "~7.8.0",
     "sql.js": "1.11.0",
     "tailwindcss": "^4.1.18",
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@angular/build": "^21.0.4",
@@ -58,6 +59,7 @@
     "@capacitor/cli": "latest",
     "@ionic/angular-toolkit": "latest",
     "@tailwindcss/postcss": "^4.1.12",
+    "@types/uuid": "^10.0.0",
     "jeep-sqlite": "^2.8.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.12",
