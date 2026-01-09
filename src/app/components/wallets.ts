@@ -23,10 +23,25 @@ import { IonButton, IonIcon } from '@ionic/angular/standalone';
       </div>
 
       <div class="grid grid-cols-2 gap-1 mb-4">
-        @for (wallet of wallets(); track wallet.id) {
+        @let bgColors =
+          [
+            'bg-teal-500',
+            'bg-blue-500',
+            'bg-amber-500',
+            'bg-red-500',
+            'bg-violet-500',
+            'bg-pink-500',
+            'bg-cyan-500',
+            'bg-orange-500',
+          ];
+        @for (wallet of wallets(); track wallet.id; let index = $index) {
           <div
             class="text-white text-sm font-medium rounded-sm px-2 py-1"
-            [class]="isSelectedAll() || selected() === wallet.id ? 'bg-teal-500' : 'bg-gray-500'"
+            [class]="
+              isSelectedAll() || selected() === wallet.id
+                ? bgColors[index % bgColors.length]
+                : 'bg-gray-500'
+            "
             (click)="isSelectedAll.set(false); selected.set(wallet.id)"
           >
             <p class="text-xs">{{ wallet.name }}</p>
