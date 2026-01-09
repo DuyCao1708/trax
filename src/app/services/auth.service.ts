@@ -22,7 +22,7 @@ import { Router } from '@angular/router';
 })
 export class AuthService {
   private _auth = inject(FirebaseService).auth;
-  private _database = inject(FirebaseService).database;
+  private _firestore = inject(FirebaseService).database;
   private _alert = inject(AlertController);
   private _router = inject(Router);
 
@@ -38,8 +38,8 @@ export class AuthService {
     const user = JSON.parse(cachedUser);
     this.currentUser.set(user);
 
-    const { value: isBioEnabeld } = await Preferences.get({ key: SETTINGS_KEYS.USE_BIOMETRIC });
-    if (isBioEnabeld === 'true') {
+    const { value: isBioEnabled } = await Preferences.get({ key: SETTINGS_KEYS.USE_BIOMETRIC });
+    if (isBioEnabled == '1') {
       const isVerified = await this.verifyBiometric();
 
       if (!isVerified) {
@@ -66,7 +66,7 @@ export class AuthService {
       await this.updateUserCache(userCredential.user);
       this.currentUser.set(userCredential.user);
 
-      await this.restoreSettingsFromCloud(userCredential.user);
+      this.restoreSettingsFromCloud(userCredential.user);
 
       this._router.navigate(['/home']);
     }
@@ -88,9 +88,9 @@ export class AuthService {
       const verified = await this.verifyBiometric();
       if (!verified) return false;
 
-      await Preferences.set({ key: SETTINGS_KEYS.USE_BIOMETRIC, value: 'true' });
+      await Preferences.set({ key: SETTINGS_KEYS.USE_BIOMETRIC, value: '1' });
     } else {
-      await Preferences.set({ key: SETTINGS_KEYS.USE_BIOMETRIC, value: 'false' });
+      await Preferences.set({ key: SETTINGS_KEYS.USE_BIOMETRIC, value: '0' });
     }
 
     await this.updateBiometricStatusOnCloud(user.uid, isEnabled);
@@ -119,21 +119,21 @@ export class AuthService {
   }
 
   private async updateBiometricStatusOnCloud(uid: string, isEnabled: boolean) {
-    const userDocRef = doc(this._database, `${Entities.Users}/${uid}`);
-    await setDoc(
-      userDocRef,
-      { biometric_enabled: isEnabled, updatedAt: new Date().toISOString() },
-      { merge: true },
-    );
+    const userDocRef = doc(this._firestore, `${Entities.Users}/${uid}`);
+    const user: AppUser = {
+      biometric_enabled: isEnabled ? 1 : 0,
+      updated_at: new Date().getTime(),
+    };
+    await setDoc(userDocRef, user, { merge: true });
   }
 
   private async restoreSettingsFromCloud(user: User) {
     try {
-      const userDoc = await getDoc(doc(this._database, `${Entities.Users}/${user.uid}`));
+      const userDoc = await getDoc(doc(this._firestore, `${Entities.Users}/${user.uid}`));
       const userData = userDoc.data() as AppUser;
 
       if (userData?.biometric_enabled) {
-        await Preferences.set({ key: SETTINGS_KEYS.USE_BIOMETRIC, value: 'true' });
+        await Preferences.set({ key: SETTINGS_KEYS.USE_BIOMETRIC, value: '1' });
       } else {
         this.askToEnableBiometric();
       }

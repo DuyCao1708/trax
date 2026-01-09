@@ -6,3 +6,5 @@ export const STORAGE_KEYS = {
 export const SETTINGS_KEYS = {
   USE_BIOMETRIC: 'trax_use_biometric',
 };
+
+export const DATABASE_NAME = 'trax_database';

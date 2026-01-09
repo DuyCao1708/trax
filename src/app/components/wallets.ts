@@ -36,7 +36,7 @@ import { IonButton, IonIcon } from '@ionic/angular/standalone';
           ];
         @for (wallet of wallets(); track wallet.id; let index = $index) {
           <div
-            class="text-white text-sm font-medium rounded-sm px-2 py-1"
+            class="text-white text-sm font-medium rounded-sm px-2 py-1.5"
             [class]="
               isSelectedAll() || selected() === wallet.id
                 ? bgColors[index % bgColors.length]
@@ -66,31 +66,31 @@ import { IonButton, IonIcon } from '@ionic/angular/standalone';
 })
 export class Wallets {
   wallets = signal<Wallet[]>([
-    {
-      id: '1',
-      name: 'Savings',
-      balance: 95_000_000,
-    },
-    {
-      id: '2',
-      name: 'BIDV',
-      balance: 95_000_000,
-    },
-    {
-      id: '3',
-      name: 'OCB',
-      balance: 95_000_000,
-    },
-    {
-      id: '4',
-      name: 'MB',
-      balance: 95_000_000,
-    },
-    {
-      id: '5',
-      name: 'VCP',
-      balance: 95_000_000,
-    },
+    // {
+    //   id: '1',
+    //   name: 'Savings',
+    //   balance: 95_000_000,
+    // },
+    // {
+    //   id: '2',
+    //   name: 'BIDV',
+    //   balance: 95_000_000,
+    // },
+    // {
+    //   id: '3',
+    //   name: 'OCB',
+    //   balance: 95_000_000,
+    // },
+    // {
+    //   id: '4',
+    //   name: 'MB',
+    //   balance: 95_000_000,
+    // },
+    // {
+    //   id: '5',
+    //   name: 'VCP',
+    //   balance: 95_000_000,
+    // },
   ]);
 
   selected = signal<string>('1');

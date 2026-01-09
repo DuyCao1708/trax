@@ -1,53 +1,37 @@
 import { inject, Injectable } from '@angular/core';
-import { collection, getDocs, query, QueryConstraint } from 'firebase/firestore';
-import { FirebaseService } from './firebase.service';
-import { Entities } from '../entities';
+import { CapacitorSQLite, SQLiteDBConnection } from '@capacitor-community/sqlite';
+import { SqliteService } from './sqlite.service';
+import { APP_UPGRADES } from '../upgrades/app.upgrade.statements';
+import { DATABASE_NAME } from '../constants/index.ts';
 
 @Injectable({
   providedIn: 'root',
 })
 export class DatabaseService {
-  private _database = inject(FirebaseService).database;
+  private _sqliteService = inject(SqliteService);
+  private _database!: SQLiteDBConnection;
 
-  //#region Categories
-  // async getCategories(): Promise<Category[]> {
-  //   return this.get(Entities.Categories).then((entities) => entities.map(CategoryMapper.toModel));
-  // }
+  async initializeDatabase() {
+    await CapacitorSQLite.addUpgradeStatement({
+      database: DATABASE_NAME,
+      upgrade: APP_UPGRADES,
+    });
 
-  // async addCategory(data: Omit<Category, 'id'>): Promise<string> {
-  //   const categoryCol = collection(this._database, Entities.Categories);
-
-  //   try {
-  //     const docRef = await addDoc(categoryCol, CategoryMapper.toModel(data));
-  //     return docRef.id;
-  //   } catch (error) {
-  //     console.error('Error adding category: ', error);
-  //     throw error;
-  //   }
-  // }
-  //#endregion Categories
-
-  //#region Private methods
-  private async get<T>(entity: Entities, ...queryConstraints: QueryConstraint[]): Promise<T[]> {
-    const collections = collection(this._database, entity);
-
-    const q = query(collections, ...queryConstraints);
-
-    try {
-      const querySnapshot = await getDocs(q);
-
-      const data: T[] = [];
-
-      querySnapshot.forEach((doc) => {
-        const item = { id: doc.id, ...doc.data() } as T;
-        data.push(item);
-      });
-
-      return data;
-    } catch (error) {
-      console.error('Error getting entities: ', error);
-      throw error;
-    }
+    const lastVersion = APP_UPGRADES[APP_UPGRADES.length - 1].toVersion;
+    this._database = await this._sqliteService.openDatabase(DATABASE_NAME, lastVersion);
   }
-  //#endregion Private methods
+
+  async query(sql: string, params: any[] = []) {
+    return await this._database.query(sql, params);
+  }
+
+  async execute(sql: string, params: any[] = []) {
+    const res = await this._database.run(sql, params);
+
+    if (this._sqliteService.platform === 'web') {
+      await this._sqliteService.sqliteConnection.saveToStore(DATABASE_NAME);
+    }
+
+    return res;
+  }
 }

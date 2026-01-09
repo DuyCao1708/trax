@@ -1,5 +1,6 @@
 import {
   ApplicationConfig,
+  inject,
   LOCALE_ID,
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
@@ -10,7 +11,7 @@ import { routes } from './app.routes';
 import { provideIonicAngular } from '@ionic/angular/standalone';
 import { registerLocaleData } from '@angular/common';
 import localeVi from '@angular/common/locales/vi';
-import { appInitializerFn } from './providers/initialize-app.provider';
+import { InitializeAppService } from './services/initialize-app.service';
 
 registerLocaleData(localeVi);
 
@@ -20,6 +21,8 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideIonicAngular({}),
     { provide: LOCALE_ID, useValue: 'vi-VN' },
-    provideAppInitializer(appInitializerFn),
+    provideAppInitializer(async () => {
+      await inject(InitializeAppService).initializeApp();
+    }),
   ],
 };
