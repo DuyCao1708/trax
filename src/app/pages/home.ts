@@ -1,20 +1,39 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { TransactionType } from '../entities/transaction';
 import { PatternEntity } from '../entities/pattern';
 import { Categories } from '../components/categories';
 import { Wallets } from '../components/wallets';
+import { Header } from '../components/header';
+import {
+  IonContent,
+  IonRefresher,
+  IonRefresherContent,
+  RefresherCustomEvent,
+} from '@ionic/angular/standalone';
+import { AuthService } from '../services/auth.service';
+import { SyncService } from '../services/sync.service';
 
 @Component({
   selector: 'home',
-  imports: [Categories, Wallets],
+  imports: [IonContent, IonRefresher, IonRefresherContent, Categories, Wallets, Header],
   template: `
-    <wallets class="block mb-2 border-b border-gray-700"></wallets>
+    <ion-content class="ion-padding">
+      <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
+        <ion-refresher-content></ion-refresher-content>
+      </ion-refresher>
 
-    <categories></categories>
+      <header></header>
+
+      <wallets class="border-b border-gray-700"></wallets>
+
+      <categories></categories>
+    </ion-content>
   `,
-  styles: ``,
 })
 export class Home {
+  private _authService = inject(AuthService);
+  private _syncService = inject(SyncService);
+
   async ngOnInit() {
     // const bidvPattern = {
     //   bank_key: 'BIDV',
@@ -35,6 +54,19 @@ export class Home {
   }
 
   async ngAfterViewInit() {}
+
+  async handleRefresh(event: RefresherCustomEvent) {
+    try {
+      const userId = this._authService.currentUser()?.uid;
+      if (userId) {
+        await this._syncService.syncAll(userId);
+      }
+    } catch (error) {
+      console.error('Lỗi khi refresh:', error);
+    } finally {
+      event.target.complete();
+    }
+  }
 
   parseNotif(smsText: string, pattern: PatternEntity): any {
     // 1. Khởi tạo Regex từ chuỗi đã lưu trong DB

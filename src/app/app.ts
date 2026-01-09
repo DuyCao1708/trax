@@ -1,81 +1,24 @@
-import { Component, computed, inject } from '@angular/core';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
-import {
-  IonHeader,
-  IonTitle,
-  IonToolbar,
-  IonButtons,
-  IonButton,
-  IonIcon,
-} from '@ionic/angular/standalone';
+import { Component, inject } from '@angular/core';
+import { RefresherCustomEvent, IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
 import { AuthService } from './services/auth.service';
 import { addIcons } from 'ionicons';
 import * as allIcons from 'ionicons/icons';
 import { PrivacyScreen } from '@capacitor/privacy-screen';
+import { SyncService } from './services/sync.service';
 
 @Component({
   selector: 'app-root',
-  imports: [
-    RouterOutlet,
-    IonHeader,
-    IonToolbar,
-    IonTitle,
-    IonButtons,
-    IonButton,
-    IonIcon,
-    RouterLink,
-  ],
+  imports: [IonApp, IonRouterOutlet],
   template: `
-    @if (isLoggedIn()) {
-      <ion-header>
-        <ion-toolbar>
-          <ion-title>
-            <a class="inline-block max-h-10 ps-4" routerLink="/home">
-              <svg
-                class="text-(--ion-text-color,#000)"
-                height="24"
-                viewBox="0 0 792 193"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M176 0C184.837 0 192 7.16344 192 16V112C192 114.085 191.6 116.076 190.875 117.902C190.169 120.507 188.794 122.968 186.749 125.013L125.152 186.609C123.265 188.496 121.024 189.812 118.643 190.56C116.619 191.484 114.37 192 112 192H16C7.16344 192 0 184.837 0 176V80C0 76.86 0.904137 73.9311 2.4668 71.46C3.22925 69.8651 4.27066 68.37 5.5918 67.0488L67.1885 5.45215C68.615 4.02563 70.2446 2.92556 71.9834 2.15039C74.3406 0.783043 77.0788 0 80 0H176Z"
-                  fill="#A695FF"
-                />
-                <path d="M160 58H146V96H110V58H96V26H160V58Z" fill="white" />
-                <path
-                  d="M290.408 190V55.44H244.008V27.6H368.36V55.44H320.568V190H290.408ZM379.245 190V67.736H407.317L407.781 106.712L403.837 97.896C405.539 91.7093 408.477 86.1413 412.653 81.192C416.829 76.2427 421.624 72.376 427.037 69.592C432.605 66.6533 438.405 65.184 444.437 65.184C447.067 65.184 449.541 65.416 451.861 65.88C454.336 66.344 456.347 66.8853 457.893 67.504L450.237 98.824C448.536 97.896 446.448 97.1227 443.973 96.504C441.499 95.8853 439.024 95.576 436.549 95.576C432.683 95.576 428.971 96.3493 425.413 97.896C422.011 99.288 418.995 101.299 416.365 103.928C413.736 106.557 411.648 109.651 410.101 113.208C408.709 116.611 408.013 120.477 408.013 124.808V190H379.245ZM517.851 192.32C507.798 192.32 498.672 189.536 490.475 183.968C482.278 178.4 475.704 170.821 470.755 161.232C465.806 151.643 463.331 140.739 463.331 128.52C463.331 116.301 465.806 105.397 470.755 95.808C475.704 86.2187 482.432 78.7173 490.939 73.304C499.446 67.8907 509.035 65.184 519.707 65.184C525.894 65.184 531.539 66.112 536.643 67.968C541.747 69.6693 546.232 72.144 550.099 75.392C553.966 78.64 557.136 82.352 559.611 86.528C562.24 90.704 564.019 95.1893 564.947 99.984L558.683 98.36V67.736H587.451V190H558.451V160.768L565.179 159.608C564.096 163.784 562.086 167.883 559.147 171.904C556.363 175.771 552.806 179.251 548.475 182.344C544.299 185.283 539.582 187.68 534.323 189.536C529.219 191.392 523.728 192.32 517.851 192.32ZM525.739 167.032C532.39 167.032 538.267 165.408 543.371 162.16C548.475 158.912 552.419 154.427 555.203 148.704C558.142 142.827 559.611 136.099 559.611 128.52C559.611 121.096 558.142 114.523 555.203 108.8C552.419 103.077 548.475 98.592 543.371 95.344C538.267 92.096 532.39 90.472 525.739 90.472C519.088 90.472 513.211 92.096 508.107 95.344C503.158 98.592 499.291 103.077 496.507 108.8C493.723 114.523 492.331 121.096 492.331 128.52C492.331 136.099 493.723 142.827 496.507 148.704C499.291 154.427 503.158 158.912 508.107 162.16C513.211 165.408 519.088 167.032 525.739 167.032ZM699.647 190L664.847 142.904L658.351 134.088L608.007 67.736H643.271L677.143 113.672L684.335 123.416L734.215 190H699.647ZM607.775 190L656.263 125.04L672.503 144.528L641.415 190H607.775ZM684.335 132.928L668.791 113.672L696.863 67.736H730.503L684.335 132.928Z"
-                  fill="currentColor"
-                />
-              </svg>
-            </a>
-          </ion-title>
-
-          <ion-buttons slot="end">
-            <ion-button (click)="logout()">
-              <ion-icon slot="icon-only" name="log-out-outline"></ion-icon>
-            </ion-button>
-          </ion-buttons>
-        </ion-toolbar>
-      </ion-header>
-    }
-
-    <router-outlet />
+    <ion-app>
+      <ion-router-outlet></ion-router-outlet>
+    </ion-app>
   `,
   styles: [],
 })
 export class App {
-  private _authService = inject(AuthService);
-  private _router = inject(Router);
-
-  protected isLoggedIn = computed(() => !!this._authService.currentUser());
-
   constructor() {
     addIcons(allIcons);
     PrivacyScreen.enable();
-  }
-
-  logout() {
-    this._authService.logout().then(() => this._router.navigate(['/']));
   }
 }

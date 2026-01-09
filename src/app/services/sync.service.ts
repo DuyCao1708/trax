@@ -15,6 +15,7 @@ export class SyncService {
   private _firestore = inject(FirebaseService).database;
 
   private _isSyncing = false;
+  private _syncingTables: { [key: string]: boolean } = {};
 
   async syncAll(userId: string) {
     if (this._isSyncing) return;
@@ -33,6 +34,25 @@ export class SyncService {
       }
     } finally {
       this._isSyncing = false;
+    }
+  }
+
+  async syncTableOnly(tableName: string, userId: string, pushOnly = false) {
+    if (this._syncingTables[tableName]) return;
+
+    const status = await Network.getStatus();
+    if (!status.connected) return;
+
+    this._syncingTables[tableName] = true;
+
+    try {
+      await this.pushTable(tableName, userId);
+
+      if (!pushOnly) {
+        await this.pullTable(tableName, userId);
+      }
+    } finally {
+      this._syncingTables[tableName] = false;
     }
   }
 

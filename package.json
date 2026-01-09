@@ -36,6 +36,7 @@
     "@capacitor/app": "^8.0.0",
     "@capacitor/core": "latest",
     "@capacitor/filesystem": "^8.0.0",
+    "@capacitor/keyboard": "^8.0.0",
     "@capacitor/network": "^8.0.0",
     "@capacitor/preferences": "^8.0.0",
     "@capacitor/privacy-screen": "^1.1.1",

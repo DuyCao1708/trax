@@ -28,6 +28,12 @@ const config: CapacitorConfig = {
       electronMacLocation: '/Users/Shared/CapacitorSQLite',
       electronLinuxLocation: '~/.local/share/CapacitorSQLite',
     },
+    Keyboard: {
+      resizeOnFullScreen: true,
+    },
+  },
+  android: {
+    adjustMarginsForEdgeToEdge: 'auto',
   },
 };
 

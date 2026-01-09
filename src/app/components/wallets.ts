@@ -2,10 +2,11 @@ import { Component, signal } from '@angular/core';
 import { Wallet } from '../models/wallet';
 import { DecimalPipe } from '@angular/common';
 import { IonButton, IonIcon } from '@ionic/angular/standalone';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'wallets',
-  imports: [DecimalPipe, IonButton, IonIcon],
+  imports: [DecimalPipe, IonButton, IonIcon, RouterLink],
   template: `
     <div class="pb-4 px-4">
       <div class="flex justify-between items-center">
@@ -50,7 +51,7 @@ import { IonButton, IonIcon } from '@ionic/angular/standalone';
           </div>
         }
 
-        <ion-button fill="outline">
+        <ion-button fill="outline" [routerLink]="['/wallet-form']" routerDirection="forward">
           <div class="flex items-center justify-between w-full">
             <span class="text-xs">Add wallet</span>
             <ion-icon name="add-circle" class="text-xl"></ion-icon>
@@ -65,33 +66,7 @@ import { IonButton, IonIcon } from '@ionic/angular/standalone';
   `,
 })
 export class Wallets {
-  wallets = signal<Wallet[]>([
-    // {
-    //   id: '1',
-    //   name: 'Savings',
-    //   balance: 95_000_000,
-    // },
-    // {
-    //   id: '2',
-    //   name: 'BIDV',
-    //   balance: 95_000_000,
-    // },
-    // {
-    //   id: '3',
-    //   name: 'OCB',
-    //   balance: 95_000_000,
-    // },
-    // {
-    //   id: '4',
-    //   name: 'MB',
-    //   balance: 95_000_000,
-    // },
-    // {
-    //   id: '5',
-    //   name: 'VCP',
-    //   balance: 95_000_000,
-    // },
-  ]);
+  wallets = signal<Wallet[]>([]);
 
   selected = signal<string>('1');
 
