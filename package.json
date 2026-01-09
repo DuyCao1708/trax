@@ -36,6 +36,7 @@
     "@capacitor/app": "^8.0.0",
     "@capacitor/core": "latest",
     "@capacitor/filesystem": "^8.0.0",
+    "@capacitor/network": "^8.0.0",
     "@capacitor/preferences": "^8.0.0",
     "@capacitor/privacy-screen": "^1.1.1",
     "@capacitor/share": "^8.0.0",
@@ -44,9 +45,9 @@
     "firebase": "^12.7.0",
     "notification-reader": "file:plugins/notification-reader",
     "rxjs": "~7.8.0",
+    "sql.js": "1.11.0",
     "tailwindcss": "^4.1.18",
-    "tslib": "^2.3.0",
-    "sql.js": "1.11.0"
+    "tslib": "^2.3.0"
   },
   "devDependencies": {
     "@angular/build": "^21.0.4",
