@@ -17,7 +17,7 @@ import { SyncService } from '../services/sync.service';
   selector: 'home',
   imports: [IonContent, IonRefresher, IonRefresherContent, Categories, Wallets, Header],
   template: `
-    <ion-content class="ion-padding">
+    <ion-content>
       <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
         <ion-refresher-content></ion-refresher-content>
       </ion-refresher>
