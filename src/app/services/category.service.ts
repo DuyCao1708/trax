@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { Category } from '../models/category';
 import { Preferences } from '@capacitor/preferences';
-import { STORAGE_KEYS } from '../constants/index.ts';
+import { STORAGE_KEYS } from '../constants/index';
 
 @Injectable({
   providedIn: 'root',

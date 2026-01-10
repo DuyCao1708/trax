@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth';
 import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import { Preferences } from '@capacitor/preferences';
-import { SETTINGS_KEYS, STORAGE_KEYS } from '../constants/index.ts';
+import { OPERATION_KEYS } from '../constants/index';
 import { AlertController } from '@ionic/angular/standalone';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { AppUser } from '../entities/app-user';
@@ -29,7 +29,7 @@ export class AuthService {
   currentUser = signal<User | null>(null);
 
   async initializeAuth() {
-    const { value: cachedUser } = await Preferences.get({ key: STORAGE_KEYS.CACHED_USER });
+    const { value: cachedUser } = await Preferences.get({ key: OPERATION_KEYS.CACHED_USER });
 
     if (!cachedUser) {
       return;
@@ -38,7 +38,7 @@ export class AuthService {
     const user = JSON.parse(cachedUser);
     this.currentUser.set(user);
 
-    const { value: isBioEnabled } = await Preferences.get({ key: SETTINGS_KEYS.USE_BIOMETRIC });
+    const { value: isBioEnabled } = await Preferences.get({ key: OPERATION_KEYS.USE_BIOMETRIC });
     if (isBioEnabled == '1') {
       const isVerified = await this.verifyBiometric();
 
@@ -74,8 +74,8 @@ export class AuthService {
 
   async logout() {
     await signOut(this._auth);
-    await Preferences.remove({ key: STORAGE_KEYS.CACHED_USER });
-    await Preferences.remove({ key: SETTINGS_KEYS.USE_BIOMETRIC });
+    await Preferences.remove({ key: OPERATION_KEYS.CACHED_USER });
+    await Preferences.remove({ key: OPERATION_KEYS.USE_BIOMETRIC });
     this.currentUser.set(null);
     this._router.navigate(['/login']);
   }
@@ -88,9 +88,9 @@ export class AuthService {
       const verified = await this.verifyBiometric();
       if (!verified) return false;
 
-      await Preferences.set({ key: SETTINGS_KEYS.USE_BIOMETRIC, value: '1' });
+      await Preferences.set({ key: OPERATION_KEYS.USE_BIOMETRIC, value: '1' });
     } else {
-      await Preferences.set({ key: SETTINGS_KEYS.USE_BIOMETRIC, value: '0' });
+      await Preferences.set({ key: OPERATION_KEYS.USE_BIOMETRIC, value: '0' });
     }
 
     await this.updateBiometricStatusOnCloud(user.uid, isEnabled);
@@ -115,7 +115,7 @@ export class AuthService {
       uid: user.uid,
       email: user.email,
     };
-    await Preferences.set({ key: STORAGE_KEYS.CACHED_USER, value: JSON.stringify(profile) });
+    await Preferences.set({ key: OPERATION_KEYS.CACHED_USER, value: JSON.stringify(profile) });
   }
 
   private async updateBiometricStatusOnCloud(uid: string, isEnabled: boolean) {
@@ -133,7 +133,7 @@ export class AuthService {
       const userData = userDoc.data() as AppUser;
 
       if (userData?.biometric_enabled) {
-        await Preferences.set({ key: SETTINGS_KEYS.USE_BIOMETRIC, value: '1' });
+        await Preferences.set({ key: OPERATION_KEYS.USE_BIOMETRIC, value: '1' });
       } else {
         this.askToEnableBiometric();
       }

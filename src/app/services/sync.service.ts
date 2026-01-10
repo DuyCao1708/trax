@@ -4,7 +4,7 @@ import { Preferences } from '@capacitor/preferences';
 import { FirebaseService } from './firebase.service';
 import { Entities, SyncStatus } from '../entities';
 import { collection, doc, getDocs, orderBy, query, setDoc, where } from 'firebase/firestore';
-import { SETTINGS_KEYS } from '../constants/index.ts';
+import { OPERATION_KEYS } from '../constants/index';
 import { Network } from '@capacitor/network';
 import { ToastController } from '@ionic/angular/standalone';
 
@@ -96,7 +96,7 @@ export class SyncService {
 
   private async pullTable(tableName: string, userId: string) {
     try {
-      const syncKey = `${SETTINGS_KEYS.LAST_SYNC}_${tableName}_${userId}`;
+      const syncKey = `${OPERATION_KEYS.LAST_SYNC}_${tableName}_${userId}`;
       const { value: lastSync } = await Preferences.get({ key: syncKey });
       const lastSyncTs = lastSync ? parseInt(lastSync) : 0;
 

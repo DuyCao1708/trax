@@ -24,7 +24,7 @@ import { SyncService } from '../services/sync.service';
 
       <header></header>
 
-      <wallets class="border-b border-gray-700"></wallets>
+      <wallets></wallets>
 
       <categories></categories>
     </ion-content>

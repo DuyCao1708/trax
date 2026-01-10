@@ -8,5 +8,6 @@ export interface WalletEntity {
   user_id?: string;
   updated_at: number;
   is_deleted: BooleanNumber;
+  sort_order: number;
   sync_status: SyncStatus;
 }

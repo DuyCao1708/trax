@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { CapacitorSQLite, SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { SqliteService } from './sqlite.service';
-import { APP_UPGRADES } from '../upgrades/app.upgrade.statements';
-import { DATABASE_NAME } from '../constants/index.ts';
+import { MIGRATION_STATEMENTS } from '../migrations';
+import { DATABASE_NAME } from '../constants/index';
 
 @Injectable({
   providedIn: 'root',
@@ -14,10 +14,10 @@ export class DatabaseService {
   async initializeDatabase() {
     await CapacitorSQLite.addUpgradeStatement({
       database: DATABASE_NAME,
-      upgrade: APP_UPGRADES,
+      upgrade: MIGRATION_STATEMENTS,
     });
 
-    const lastVersion = APP_UPGRADES[APP_UPGRADES.length - 1].toVersion;
+    const lastVersion = MIGRATION_STATEMENTS[MIGRATION_STATEMENTS.length - 1].toVersion;
     this._database = await this._sqliteService.openDatabase(DATABASE_NAME, lastVersion);
   }
 

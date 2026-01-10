@@ -15,6 +15,7 @@ import {
   IonNote,
   IonProgressBar,
   ToastController,
+  IonBackButton,
 } from '@ionic/angular/standalone';
 import { WalletService } from '../services/wallet.service';
 import { AuthService } from '../services/auth.service';
@@ -36,14 +37,13 @@ import { LoadingStatus } from '../models/loading-status';
     IonInput,
     IonNote,
     IonProgressBar,
+    IonBackButton,
   ],
   template: `
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-button (click)="cancel()" color="medium">
-            <ion-icon slot="icon-only" name="close-outline"></ion-icon>
-          </ion-button>
+          <ion-back-button defaultHref="/home" icon="close-outline"></ion-back-button>
         </ion-buttons>
 
         <ion-title>New wallet</ion-title>
@@ -118,8 +118,8 @@ import { LoadingStatus } from '../models/loading-status';
       --highlight-color-valid: var(--ion-color-primary);
     }
 
-    .custom-input.has-focus {
-      --background: var(--ion-color-step-50) !important;
+    .custom-input {
+      --background: transparent !important;
     }
   `,
 })
@@ -136,10 +136,6 @@ export class WalletForm {
   });
 
   protected status = signal<LoadingStatus>('idle');
-
-  cancel() {
-    this._navCtrl.back();
-  }
 
   async save() {
     if (this.walletForm.invalid) {

@@ -1,6 +1,6 @@
 import { Entities } from '../entities';
 
-export const APP_UPGRADES = [
+export const MIGRATION_STATEMENTS = [
   {
     toVersion: 1,
     statements: [
@@ -15,6 +15,13 @@ export const APP_UPGRADES = [
         sync_status INTEGER DEFAULT 0
       );`,
       `CREATE INDEX IF NOT EXISTS idx_${Entities.Wallets}_user_id ON wallets(user_id);`,
+    ],
+  },
+  {
+    toVersion: 2,
+    statements: [
+      `ALTER TABLE ${Entities.Wallets} ADD COLUMN sort_order INTEGER DEFAULT 0;`,
+      `CREATE INDEX IF NOT EXISTS idx_${Entities.Wallets}_sort_order ON ${Entities.Wallets}(sort_order);`,
     ],
   },
 ];
