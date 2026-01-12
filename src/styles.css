@@ -1,3 +1,17 @@
 /* You can add global styles to this file, and also import other style files */
 
-@import 'tailwindcss';
+/* @import 'tailwindcss'; */
+
+@import 'tailwindcss/theme';
+@import 'tailwindcss/utilities';
+
+ion-button {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+ion-header {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  @apply border-b border-(--ion-color-light-shade);
+}

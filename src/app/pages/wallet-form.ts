@@ -67,7 +67,7 @@ import { ActivatedRoute } from '@angular/router';
     </ion-header>
 
     <ion-content>
-      <form [formGroup]="walletForm">
+      <form [formGroup]="formGroup">
         <ion-list lines="none" class="pb-4! *:mb-2">
           <ion-item class="mb-0!">
             <ion-input
@@ -83,7 +83,7 @@ import { ActivatedRoute } from '@angular/router';
             </ion-input>
           </ion-item>
 
-          @if (walletForm.get('name')?.touched && walletForm.get('name')?.hasError('required')) {
+          @if (formGroup.get('name')?.touched && formGroup.get('name')?.hasError('required')) {
             <ion-note color="danger" class="p-8">Wallet name is required</ion-note>
           }
 
@@ -136,7 +136,7 @@ export class WalletForm {
   private _toastCtrl = inject(ToastController);
   private _alertCtrl = inject(AlertController);
 
-  protected walletForm = new FormBuilder().nonNullable.group({
+  protected formGroup = new FormBuilder().nonNullable.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
     balance: [0, [Validators.required, Validators.min(0)]],
     currency: ['VND', [Validators.required]],
@@ -163,13 +163,13 @@ export class WalletForm {
   }
 
   async save() {
-    if (this.walletForm.invalid) {
-      this.walletForm.markAllAsTouched();
+    if (this.formGroup.invalid) {
+      this.formGroup.markAllAsTouched();
       return;
     }
 
     this.status.set('loading');
-    const formValue = this.walletForm.getRawValue();
+    const formValue = this.formGroup.getRawValue();
 
     try {
       const user = this._authService.currentUser();
@@ -237,7 +237,7 @@ export class WalletForm {
     const wallet = this._walletService.wallets().find((wallet) => wallet.id === id);
 
     if (wallet) {
-      this.walletForm.setValue({
+      this.formGroup.setValue({
         name: wallet.name,
         currency: wallet.currency,
         balance: wallet.balance,

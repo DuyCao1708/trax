@@ -36,14 +36,6 @@ export class SyncService {
         await this.pushTable(tableName, userId);
         await this.pullTable(tableName, userId);
       }
-    } catch (error) {
-      const toast = await this._toastCtrl.create({
-        message: error as string,
-        duration: 2000,
-        color: 'danger',
-        position: 'bottom',
-      });
-      await toast.present();
     } finally {
       this._isSyncing = false;
     }

@@ -59,7 +59,7 @@ import { AuthService } from '../services/auth.service';
               class="not-last:border-b border-(--ion-text-color-step-800)"
               [routerLink]="['/wallet-form', wallet.id]"
             >
-              <div class="w-6 h-6 rounded-sm mr-4" [class]="colors[index % colors.length]"></div>
+              <div class="p-3 rounded-sm mr-4" [class]="colors[index % colors.length]"></div>
               <ion-label> {{ wallet.name }} </ion-label>
               <ion-reorder slot="end"></ion-reorder>
             </ion-item>
@@ -68,7 +68,11 @@ import { AuthService } from '../services/auth.service';
       </ion-list>
 
       <ion-fab vertical="bottom" horizontal="end" slot="fixed">
-        <ion-fab-button routerLink="/wallet-form">
+        <ion-fab-button
+          routerLink="/wallet-form"
+          [style.--border-radius]="'12px'"
+          [style.--color]="'var(--color-white)'"
+        >
           <ion-icon name="add"></ion-icon>
         </ion-fab-button>
       </ion-fab>
@@ -82,7 +86,7 @@ export class WalletsSettings {
   wallets: Signal<Wallet[]> = this._walletService.wallets;
 
   get colors() {
-    return this._walletService.walletColors;
+    return this._walletService.walletColors.map((color) => `bg-${color}-500`);
   }
 
   handleReorderEnd(event: ReorderEndCustomEvent) {

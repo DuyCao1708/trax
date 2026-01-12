@@ -1,10 +1,12 @@
-import { Component, inject, Signal, signal } from '@angular/core';
+import { Component, effect, inject, output, Signal, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { IonButton, IonIcon } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
 import { WalletService } from '../services/wallet.service';
 import { AuthService } from '../services/auth.service';
 import { Wallet } from '../models/wallet';
+import { Preferences } from '@capacitor/preferences';
+import { OPERATION_KEYS } from '../constants';
 
 @Component({
   selector: 'wallets',
@@ -31,14 +33,14 @@ import { Wallet } from '../models/wallet';
           class="text-white text-sm font-medium rounded-sm px-2 py-1.5"
           [class]="
             isSelectedAll() || selected() === wallet.id
-              ? colors[index % colors.length]
+              ? backgroundColors[index % backgroundColors.length]
               : 'bg-gray-500'
           "
           (click)="isSelectedAll.set(false); selected.set(wallet.id)"
         >
-          <p class="text-xs">{{ wallet.name }}</p>
+          <div class="text-xs">{{ wallet.name }}</div>
 
-          <p>{{ wallet.balance | number: '1.0-3' }}</p>
+          <div>{{ wallet.balance | number: '1.0-3' }}</div>
         </div>
       }
 
@@ -59,14 +61,28 @@ export class Wallets {
   private _walletService = inject(WalletService);
   private _authService = inject(AuthService);
 
-  wallets: Signal<Wallet[]> = this._walletService.wallets;
+  walletSelected = output<string>();
 
-  selected = signal<string>('1');
+  protected wallets: Signal<Wallet[]> = this._walletService.wallets;
 
-  isSelectedAll = signal<boolean>(false);
+  protected selected = signal<string>('');
 
-  get colors() {
-    return this._walletService.walletColors;
+  protected isSelectedAll = signal<boolean>(false);
+
+  get backgroundColors() {
+    return this._walletService.walletColors.map((color) => `bg-${color}-500`);
+  }
+
+  constructor() {
+    effect(() => {
+      const selectedId = this.selected();
+
+      if (selectedId !== '') {
+        this.walletSelected.emit(selectedId);
+
+        this.saveSelectedWalletToPreference(selectedId);
+      }
+    });
   }
 
   async ngOnInit() {
@@ -76,8 +92,21 @@ export class Wallets {
 
     const wallets = await this._walletService.loadAll(user.uid);
 
-    if (wallets.length) {
+    const { value: selectedWalletId } = await Preferences.get({
+      key: OPERATION_KEYS.SELECTED_WALLET,
+    });
+
+    if (selectedWalletId) {
+      this.selected.set(selectedWalletId);
+    } else if (wallets.length) {
       this.selected.set(wallets[0].id);
     }
+  }
+
+  async saveSelectedWalletToPreference(walletId: string) {
+    await Preferences.set({
+      key: OPERATION_KEYS.SELECTED_WALLET,
+      value: walletId.toString(),
+    });
   }
 }

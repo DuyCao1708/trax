@@ -6,6 +6,7 @@ import { authenticationGuard } from './guards/authentication-guard';
 import { guestGuard } from './guards/guest-guard';
 import { WalletForm } from './pages/wallet-form';
 import { WalletsSettings } from './pages/wallets-settings';
+import { QuickTransactionForm } from './pages/quick-transaction-form';
 
 export const routes: Routes = [
   { path: '', component: Login, runGuardsAndResolvers: 'always', canActivate: [guestGuard] },
@@ -30,6 +31,12 @@ export const routes: Routes = [
   {
     path: 'wallets-settings',
     component: WalletsSettings,
+    runGuardsAndResolvers: 'always',
+    canActivate: [authenticationGuard],
+  },
+  {
+    path: 'quick-transaction-form',
+    component: QuickTransactionForm,
     runGuardsAndResolvers: 'always',
     canActivate: [authenticationGuard],
   },

@@ -77,7 +77,7 @@ export class AuthService {
     await Preferences.remove({ key: OPERATION_KEYS.CACHED_USER });
     await Preferences.remove({ key: OPERATION_KEYS.USE_BIOMETRIC });
     this.currentUser.set(null);
-    this._router.navigate(['/login']);
+    this._router.navigate(['/']);
   }
 
   async toggleBiometric(isEnabled: boolean) {

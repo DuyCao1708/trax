@@ -9,7 +9,7 @@ import { LoadingStatus } from '../models/loading-status';
   template: `
     <ion-content>
       <div class="w-full h-full flex flex-col justify-around login-bg">
-        <div class="ms-10">
+        <div class="mx-8">
           <svg
             class="text-(--ion-text-color)"
             height="72"
@@ -29,10 +29,10 @@ import { LoadingStatus } from '../models/loading-status';
           </svg>
         </div>
 
-        <div class="flex flex-col items-center gap-4 mx-8">
+        <div class="flex flex-col items-center gap-2 mx-8">
           <p class="text-gray-500">
             Already have an account?
-            <a class="text-purple-600 font-medium">Sign in</a>
+            <a class="font-medium">Sign in</a>
           </p>
 
           <!-- <ion-button expand="block" class="w-full" (click)="loginWithFacebook()">

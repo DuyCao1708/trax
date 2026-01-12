@@ -12,3 +12,10 @@ export enum SyncStatus {
   Synced = 1,
   Pending = 2,
 }
+
+export interface SynctableEntity {
+  user_id: string;
+  updated_at: number;
+  is_deleted: BooleanNumber;
+  sync_status: SyncStatus;
+}

@@ -18,16 +18,7 @@ export class WalletService {
   readonly wallets = this._wallets.asReadonly();
 
   get walletColors() {
-    return [
-      'bg-teal-500',
-      'bg-blue-500',
-      'bg-amber-500',
-      'bg-red-500',
-      'bg-violet-500',
-      'bg-pink-500',
-      'bg-cyan-500',
-      'bg-orange-500',
-    ];
+    return ['teal', 'blue', 'amber', 'red', 'violet', 'pink', 'cyan', 'orange'];
   }
 
   async loadAll(userId: string): Promise<WalletEntity[]> {
