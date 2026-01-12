@@ -22,6 +22,7 @@ import { NumPad } from '../components/num-pad';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { WalletService } from '../services/wallet.service';
 import { WalletSelections } from '../components/wallet-selections';
+import { DecimalPipe } from '@angular/common';
 
 @Component({
   selector: 'quick-transaction-form',
@@ -39,6 +40,7 @@ import { WalletSelections } from '../components/wallet-selections';
     IonLabel,
     ReactiveFormsModule,
     NumPad,
+    DecimalPipe,
   ],
   template: `
     <ion-header class="border-b-0">
@@ -81,10 +83,23 @@ import { WalletSelections } from '../components/wallet-selections';
         </ion-segment>
 
         <div class="flex-1 flex flex-col bg-(--quick-transaction-form-color-secondary)">
-          <section class="flex-1 flex items-center px-4">
+          <!-- <section class="flex-1 flex items-center px-4">
             <p class="text-[32px] font-black flex-1">{{ amountPrefix() }}</p>
 
-            <p class="text-[80px] font-light">{{ amount() }}</p>
+            <p class="text-[80px] font-light">{{ amount() | num: '1.0-3' }}</p>
+
+            <p class="text-[32px] font-light ms-14">{{ walletData().currency || '' }}</p>
+          </section> -->
+
+          <section class="flex-1 flex items-center px-4 @container">
+            <p class="text-[32px] font-black flex-1 me-4">{{ amountPrefix() }}</p>
+
+            <p
+              class="font-light leading-none transition-all duration-200"
+              style="font-size: clamp(40px, 15cqw, 80px);"
+            >
+              {{ amount() | number: '1.0-3' }}
+            </p>
 
             <p class="text-[32px] font-light ms-14">{{ walletData().currency || '' }}</p>
           </section>
@@ -104,7 +119,7 @@ import { WalletSelections } from '../components/wallet-selections';
           </section>
         </div>
 
-        <num-pad></num-pad>
+        <num-pad (valueChange)="test($event)"></num-pad>
       </form>
     </ion-content>
   `,
@@ -166,5 +181,11 @@ export class QuickTransactionForm {
     if (selectedWalletId) {
       this.formGroup.controls.walletId.setValue(selectedWalletId);
     }
+  }
+
+  test(x: any) {
+    console.log(x);
+
+    this.formGroup.controls.amount.setValue(x);
   }
 }
