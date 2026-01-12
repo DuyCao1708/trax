@@ -16,10 +16,12 @@ import {
   IonProgressBar,
   ToastController,
   IonBackButton,
+  AlertController,
 } from '@ionic/angular/standalone';
 import { WalletService } from '../services/wallet.service';
 import { AuthService } from '../services/auth.service';
 import { LoadingStatus } from '../models/loading-status';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'wallet-form',
@@ -46,10 +48,14 @@ import { LoadingStatus } from '../models/loading-status';
           <ion-back-button defaultHref="/home" icon="close-outline"></ion-back-button>
         </ion-buttons>
 
-        <ion-title>New wallet</ion-title>
+        <ion-title>{{ title }}</ion-title>
 
         <ion-buttons slot="end">
-          <ion-button (click)="save()" color="primary">
+          <ion-button (click)="askForDelete()">
+            <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+          </ion-button>
+
+          <ion-button (click)="save()">
             <ion-icon slot="icon-only" name="checkmark-outline"></ion-icon>
           </ion-button>
         </ion-buttons>
@@ -128,6 +134,7 @@ export class WalletForm {
   private _walletService = inject(WalletService);
   private _authService = inject(AuthService);
   private _toastCtrl = inject(ToastController);
+  private _alertCtrl = inject(AlertController);
 
   protected walletForm = new FormBuilder().nonNullable.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
@@ -137,6 +144,24 @@ export class WalletForm {
 
   protected status = signal<LoadingStatus>('idle');
 
+  private readonly _walletId: string | null;
+
+  get isEditing() {
+    return !!this._walletId;
+  }
+
+  get title() {
+    return this.isEditing ? 'Edit wallet' : 'New wallet';
+  }
+
+  constructor() {
+    this._walletId = inject(ActivatedRoute).snapshot.paramMap.get('id');
+
+    if (this._walletId) {
+      this.loadWalletData(this._walletId);
+    }
+  }
+
   async save() {
     if (this.walletForm.invalid) {
       this.walletForm.markAllAsTouched();
@@ -144,23 +169,27 @@ export class WalletForm {
     }
 
     this.status.set('loading');
-    const walletData = this.walletForm.getRawValue();
+    const formValue = this.walletForm.getRawValue();
 
     try {
-      const userId = this._authService.currentUser()?.uid;
-      if (!userId) throw new Error('User not found');
-      await this._walletService
-        .create(
-          {
-            name: walletData.name,
-            balance: Number(walletData.balance),
-            currency: walletData.currency!,
-          },
-          userId,
-        )
-        .finally(() => this.status.set('loaded'));
+      const user = this._authService.currentUser();
+      if (!user) throw new Error('User not found');
+
+      const data = {
+        name: formValue.name,
+        balance: Number(formValue.balance),
+        currency: formValue.currency!,
+      };
+
+      if (this.isEditing && this._walletId) {
+        await this._walletService.update(this._walletId, data, user.uid);
+        this.showToast('Wallet has been updated');
+      } else {
+        await this._walletService.create(data, user.uid);
+        this.showToast('New wallet has been created');
+      }
+
       this._navCtrl.back();
-      this.showToast('New wallet has been created');
     } catch (error) {
       console.error('Error when saving wallet:', error);
       this.status.set('idle');
@@ -171,7 +200,30 @@ export class WalletForm {
     }
   }
 
-  async showToast(message: string, color: 'success' | 'danger' = 'success') {
+  async askForDelete() {
+    if (!this._walletId) return;
+
+    const alert = await this._alertCtrl.create({
+      header: 'Confirm Delete',
+      message:
+        'Are you sure you want to delete this wallet? All related transactions will be affected.',
+      buttons: [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Delete',
+          role: 'destructive',
+          handler: async () => {
+            this.executeDelete();
+          },
+        },
+      ],
+    });
+
+    await alert.present();
+  }
+
+  //#region Private methods
+  private async showToast(message: string, color: 'success' | 'danger' = 'success') {
     const toast = await this._toastCtrl.create({
       message: message,
       duration: 2000,
@@ -180,4 +232,34 @@ export class WalletForm {
     });
     await toast.present();
   }
+
+  private loadWalletData(id: string) {
+    const wallet = this._walletService.wallets().find((wallet) => wallet.id === id);
+
+    if (wallet) {
+      this.walletForm.setValue({
+        name: wallet.name,
+        currency: wallet.currency,
+        balance: wallet.balance,
+      });
+    }
+  }
+
+  private async executeDelete() {
+    this.status.set('loading');
+    try {
+      const user = this._authService.currentUser();
+      if (!user) return;
+
+      await this._walletService.delete(this._walletId!, user.uid);
+
+      this._navCtrl.back();
+      this.showToast('Wallet has been deleted successfully');
+    } catch (error) {
+      this.showToast('Failed to delete wallet. Please try again.', 'danger');
+    } finally {
+      this.status.set('loaded');
+    }
+  }
+  //#endregion
 }

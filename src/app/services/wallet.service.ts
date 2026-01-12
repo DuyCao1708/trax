@@ -72,6 +72,36 @@ export class WalletService {
     return newWallet;
   }
 
+  async update(
+    id: string,
+    data: { name: string; balance: number; currency: string },
+    userId: string,
+  ) {
+    const updatedAt = Date.now();
+
+    const sql = `
+    UPDATE ${Entities.Wallets} 
+    SET name = ?, balance = ?, currency = ?, updated_at = ?, sync_status = ? 
+    WHERE id = ? AND user_id = ?
+  `;
+
+    await this._databaseService.execute(sql, [
+      data.name,
+      data.balance,
+      data.currency,
+      updatedAt,
+      SyncStatus.Pending,
+      id,
+      userId,
+    ]);
+
+    this._wallets.update((current) =>
+      current.map((wallet) => (wallet.id === id ? { ...wallet, ...data } : wallet)),
+    );
+
+    this._syncService.syncTableOnly(Entities.Wallets, userId);
+  }
+
   async reorderWallets(newOrder: Wallet[], userId: string) {
     this._wallets.set(newOrder);
 

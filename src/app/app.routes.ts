@@ -22,6 +22,12 @@ export const routes: Routes = [
     canActivate: [authenticationGuard],
   },
   {
+    path: 'wallet-form/:id',
+    component: WalletForm,
+    runGuardsAndResolvers: 'always',
+    canActivate: [authenticationGuard],
+  },
+  {
     path: 'wallets-settings',
     component: WalletsSettings,
     runGuardsAndResolvers: 'always',

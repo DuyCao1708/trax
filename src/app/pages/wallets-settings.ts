@@ -55,7 +55,10 @@ import { AuthService } from '../services/auth.service';
       <ion-list lines="none">
         <ion-reorder-group [disabled]="false" (ionReorderEnd)="handleReorderEnd($any($event))">
           @for (wallet of wallets(); track wallet.id; let index = $index) {
-            <ion-item class="not-last:border-b border-(--ion-text-color-step-800)">
+            <ion-item
+              class="not-last:border-b border-(--ion-text-color-step-800)"
+              [routerLink]="['/wallet-form', wallet.id]"
+            >
               <div class="w-6 h-6 rounded-sm mr-4" [class]="colors[index % colors.length]"></div>
               <ion-label> {{ wallet.name }} </ion-label>
               <ion-reorder slot="end"></ion-reorder>
@@ -71,7 +74,6 @@ import { AuthService } from '../services/auth.service';
       </ion-fab>
     </ion-content>
   `,
-  styles: ``,
 })
 export class WalletsSettings {
   private _walletService = inject(WalletService);

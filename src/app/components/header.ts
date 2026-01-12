@@ -18,7 +18,7 @@ import { AuthService } from '../services/auth.service';
       <ion-header>
         <ion-toolbar>
           <ion-title>
-            <a class="inline-block max-h-10 ps-4" routerLink="/home" routerDirection="root">
+            <a class="inline-block max-h-10 ps-4" routerLink="/home">
               <svg
                 class="text-(--ion-text-color,#000)"
                 height="24"

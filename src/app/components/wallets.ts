@@ -21,7 +21,6 @@ import { Wallet } from '../models/wallet';
           [style.--border-width]="'1px'"
           [style.--border-radius]="'8px'"
           routerLink="/wallets-settings"
-          routerDirection="back"
         >
           <ion-icon slot="icon-only" ios="settings" md="settings-sharp"></ion-icon>
         </ion-button>
@@ -44,7 +43,7 @@ import { Wallet } from '../models/wallet';
           </div>
         }
 
-        <ion-button fill="outline" [routerLink]="['/wallet-form']" routerDirection="forward">
+        <ion-button fill="outline" [routerLink]="['/wallet-form']">
           <div class="flex items-center justify-between w-full">
             <span class="text-xs">Add wallet</span>
             <ion-icon name="add-circle" class="text-xl"></ion-icon>
