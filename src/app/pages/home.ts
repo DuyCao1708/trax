@@ -1,7 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { TransactionType } from '../entities/transaction';
 import { PatternEntity } from '../entities/pattern';
-import { Categories } from '../components/categories';
 import { Wallets } from '../components/wallets';
 import { Header } from '../components/header';
 import {
@@ -15,7 +14,7 @@ import { SyncService } from '../services/sync.service';
 
 @Component({
   selector: 'home',
-  imports: [IonContent, IonRefresher, IonRefresherContent, Categories, Wallets, Header],
+  imports: [IonContent, IonRefresher, IonRefresherContent, Wallets, Header],
   template: `
     <ion-content>
       <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
@@ -24,9 +23,7 @@ import { SyncService } from '../services/sync.service';
 
       <header></header>
 
-      <wallets></wallets>
-
-      <categories></categories>
+      <wallets class="block px-4 pb-4 border-b border-(--ion-text-color-step-800)"></wallets>
     </ion-content>
   `,
 })
