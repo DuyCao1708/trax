@@ -3,7 +3,6 @@ import { DecimalPipe } from '@angular/common';
 import { IonButton, IonIcon } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
 import { WalletService } from '../services/wallet.service';
-import { AuthService } from '../services/auth.service';
 import { Wallet } from '../models/wallet';
 import { Preferences } from '@capacitor/preferences';
 import { OPERATION_KEYS } from '../constants';
@@ -59,7 +58,6 @@ import { OPERATION_KEYS } from '../constants';
 })
 export class Wallets {
   private _walletService = inject(WalletService);
-  private _authService = inject(AuthService);
 
   walletSelected = output<string>();
 
@@ -86,11 +84,7 @@ export class Wallets {
   }
 
   async ngOnInit() {
-    const user = this._authService.currentUser();
-
-    if (!user) return;
-
-    const wallets = await this._walletService.loadAll(user.uid);
+    const wallets = this.wallets();
 
     const { value: selectedWalletId } = await Preferences.get({
       key: OPERATION_KEYS.SELECTED_WALLET,

@@ -23,6 +23,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { WalletService } from '../services/wallet.service';
 import { WalletSelections } from '../components/wallet-selections';
 import { DecimalPipe } from '@angular/common';
+import { CategorySelections } from '../components/category-selections';
+import { Wallet } from '../models/wallet';
 
 @Component({
   selector: 'quick-transaction-form',
@@ -108,7 +110,7 @@ import { DecimalPipe } from '@angular/common';
             </span>
 
             <span class="text-[32px] font-light ps-10">
-              {{ walletData().currency || '' }}
+              {{ walletData()?.currency || '' }}
             </span>
           </section>
 
@@ -117,10 +119,10 @@ import { DecimalPipe } from '@angular/common';
           >
             <div (click)="openWalletSelectionModal()">
               <p>Wallet</p>
-              <p>{{ walletData().name || '' }}</p>
+              <p>{{ walletData()?.name || '' }}</p>
             </div>
 
-            <div>
+            <div (click)="openCategorySelectionModal()">
               <p>Category</p>
               <p>TRANSPORTATION</p>
             </div>
@@ -168,7 +170,9 @@ export class QuickTransactionForm {
 
   protected walletColor = computed(() => this._walletService.walletColors[this._walletIndex()]);
 
-  protected walletData = linkedSignal(() => this._walletService.wallets()[this._walletIndex()]);
+  protected walletData = linkedSignal<Wallet | undefined>(
+    () => this._walletService.wallets()[this._walletIndex()],
+  );
 
   constructor() {
     const { type, walletId } = inject(ActivatedRoute).snapshot.queryParams;
@@ -188,6 +192,20 @@ export class QuickTransactionForm {
 
     if (selectedWalletId) {
       this.formGroup.controls.walletId.setValue(selectedWalletId);
+    }
+  }
+
+  async openCategorySelectionModal() {
+    const modal = await this._modalCtrl.create({
+      component: CategorySelections,
+    });
+
+    await modal.present();
+
+    const { data: selectedCategoryId } = await modal.onWillDismiss();
+
+    if (selectedCategoryId) {
+      // this.formGroup.controls.walletId.setValue(selectedWalletId);
     }
   }
 

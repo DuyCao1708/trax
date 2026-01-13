@@ -1,34 +1,51 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable, Signal, signal } from '@angular/core';
 import { DatabaseService } from './database.service';
 import { WalletEntity } from '../entities/wallet';
 import { Entities, SyncStatus } from '../entities';
 import { SyncService } from './sync.service';
 import { v4 as uuid } from 'uuid';
 import { Wallet, WalletMapper } from '../models/wallet';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class WalletService {
   private _databaseService = inject(DatabaseService);
+  private _authService = inject(AuthService);
   private _syncService = inject(SyncService);
+  private _isLoading = false;
 
   private _wallets = signal<Wallet[]>([]);
 
-  readonly wallets = this._wallets.asReadonly();
+  get wallets(): Signal<Wallet[]> {
+    const currentWallets = this._wallets();
+    const user = this._authService.currentUser();
+
+    if (currentWallets.length === 0 && user && !this._isLoading) {
+      this.loadAll(user.uid);
+    }
+
+    return this._wallets.asReadonly();
+  }
 
   get walletColors() {
     return ['teal', 'blue', 'amber', 'red', 'violet', 'pink', 'cyan', 'orange'];
   }
 
   async loadAll(userId: string): Promise<WalletEntity[]> {
-    const sql = `SELECT * FROM ${Entities.Wallets} WHERE user_id = ? AND is_deleted = 0 ORDER BY sort_order ASC`;
-    const result = await this._databaseService.query(sql, [userId]);
+    this._isLoading = true;
+    try {
+      const sql = `SELECT * FROM ${Entities.Wallets} WHERE user_id = ? AND is_deleted = 0 ORDER BY sort_order ASC`;
+      const result = await this._databaseService.query(sql, [userId]);
 
-    const data = result.values || [];
-    this._wallets.set(data.map(WalletMapper.toModel));
+      const data = result.values || [];
+      this._wallets.set(data.map(WalletMapper.toModel));
 
-    return data;
+      return data;
+    } finally {
+      this._isLoading = false;
+    }
   }
 
   async create(data: { name: string; balance: number; currency: string }, userId: string) {
