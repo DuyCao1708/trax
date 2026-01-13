@@ -46,11 +46,15 @@ import { DecimalPipe } from '@angular/common';
     <ion-header class="border-b-0">
       <ion-toolbar [style.--ion-toolbar-background]="'var(--quick-transaction-form-color-primary)'">
         <ion-buttons slot="start">
-          <ion-back-button defaultHref="/home" icon="close-outline"></ion-back-button>
+          <ion-back-button
+            defaultHref="/home"
+            icon="close-outline"
+            [style.--color]="'var(--color-white)'"
+          ></ion-back-button>
         </ion-buttons>
 
         <ion-buttons slot="end">
-          <ion-button (click)="(null)">
+          <ion-button (click)="(null)" [style.--color]="'var(--color-white)'">
             <ion-icon slot="icon-only" name="checkmark-outline"></ion-icon>
           </ion-button>
         </ion-buttons>
@@ -82,7 +86,7 @@ import { DecimalPipe } from '@angular/common';
           }
         </ion-segment>
 
-        <div class="flex-1 flex flex-col bg-(--quick-transaction-form-color-secondary)">
+        <div class="flex-1 flex flex-col bg-(--quick-transaction-form-color-secondary) text-white">
           <section class="flex-1 grid grid-cols-[auto_1fr_auto] items-center px-4">
             <span class="text-[32px] font-black pe-4">
               {{ amountPrefix() }}

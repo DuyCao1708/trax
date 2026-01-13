@@ -18,7 +18,7 @@ import { IonRippleEffect } from '@ionic/angular/standalone';
       }
     </section>
 
-    <section class="flex flex-col justify-evenly w-[20%]">
+    <section class="flex flex-col justify-evenly w-[20%] bg-neutral-900">
       @for (operator of operators(); track operator) {
         <div
           class="ion-activatable relative overflow-hidden text-center text-3xl font-light py-7"
