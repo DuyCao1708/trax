@@ -5,6 +5,8 @@
 @import 'tailwindcss/theme';
 @import 'tailwindcss/utilities';
 
+@source inline("bg-{teal,blue,amber,red,violet,pink,cyan,orange}-{400,500}");
+
 ion-button {
   margin-top: 0;
   margin-bottom: 0;

@@ -83,25 +83,29 @@ import { DecimalPipe } from '@angular/common';
         </ion-segment>
 
         <div class="flex-1 flex flex-col bg-(--quick-transaction-form-color-secondary)">
-          <!-- <section class="flex-1 flex items-center px-4">
-            <p class="text-[32px] font-black flex-1">{{ amountPrefix() }}</p>
+          <section class="flex-1 grid grid-cols-[auto_1fr_auto] items-center px-4">
+            <span class="text-[32px] font-black pe-4">
+              {{ amountPrefix() }}
+            </span>
 
-            <p class="text-[80px] font-light">{{ amount() | num: '1.0-3' }}</p>
-
-            <p class="text-[32px] font-light ms-14">{{ walletData().currency || '' }}</p>
-          </section> -->
-
-          <section class="flex-1 flex items-center px-4 @container">
-            <p class="text-[32px] font-black flex-1 me-4">{{ amountPrefix() }}</p>
-
-            <p
-              class="font-light leading-none transition-all duration-200"
-              style="font-size: clamp(40px, 15cqw, 80px);"
+            <span
+              class="text-end font-light"
+              [style.font-size]="
+                'clamp(16px, calc((100vw - 150px) / ' +
+                (displayAmount().length || 1) * 0.6 +
+                '), 80px)'
+              "
             >
-              {{ amount() | number: '1.0-3' }}
-            </p>
+              @if (displayAmount().endsWith('.')) {
+                {{ displayAmount() | number: '1.0-0' }},
+              } @else {
+                {{ displayAmount() | number: '1.0-3' }}
+              }
+            </span>
 
-            <p class="text-[32px] font-light ms-14">{{ walletData().currency || '' }}</p>
+            <span class="text-[32px] font-light ps-10">
+              {{ walletData().currency || '' }}
+            </span>
           </section>
 
           <section
@@ -119,7 +123,7 @@ import { DecimalPipe } from '@angular/common';
           </section>
         </div>
 
-        <num-pad (valueChange)="test($event)"></num-pad>
+        <num-pad (displayChange)="setDisplayAmount($event)"></num-pad>
       </form>
     </ion-content>
   `,
@@ -150,7 +154,7 @@ export class QuickTransactionForm {
 
   protected amountPrefix = computed(() => ['+', '-', ''][this._formGroupValue().type ?? 1]);
 
-  protected amount = computed(() => this._formGroupValue().amount || 0);
+  protected displayAmount = signal<string>('0');
 
   private _walletIndex = computed(() =>
     this._walletService
@@ -183,9 +187,7 @@ export class QuickTransactionForm {
     }
   }
 
-  test(x: any) {
-    console.log(x);
-
-    this.formGroup.controls.amount.setValue(x);
+  setDisplayAmount(value: string) {
+    this.displayAmount.set(parseFloat(value).toFixed(2));
   }
 }

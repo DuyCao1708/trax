@@ -159,6 +159,8 @@ export class WalletForm {
 
     if (this._walletId) {
       this.loadWalletData(this._walletId);
+
+      this.formGroup.controls.balance.disable();
     }
   }
 
