@@ -3,9 +3,8 @@ import { Mapper } from './mapper';
 
 export interface Category extends Omit<
   CategoryEntity,
-  'parent_id' | 'is_default' | 'user_id' | 'updated_at' | 'sync_status' | 'is_deleted'
+  'parent_id' | 'user_id' | 'updated_at' | 'sync_status' | 'is_deleted'
 > {
-  isDefault: boolean;
   parentId?: string;
 }
 
@@ -16,7 +15,6 @@ export const CategoryMapper: Mapper<CategoryEntity, Category> = {
       name: entity.name,
       icon: entity.icon,
       color: `var(--color-${entity.color}-500)`,
-      isDefault: !!entity.is_default,
       parentId: entity.parent_id || undefined,
     };
   },
