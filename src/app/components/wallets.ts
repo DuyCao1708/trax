@@ -78,10 +78,18 @@ export class Wallets {
 
       if (!currentSelected && wallets.length > 0) {
         this.selected.set(wallets[0].id);
+      }
+    });
+
+    effect(() => {
+      const selectedId = this.selected();
+
+      if (selectedId !== '') {
+        this.walletSelected.emit(selectedId);
 
         Preferences.set({
           key: OPERATION_KEYS.SELECTED_WALLET,
-          value: wallets[0].id,
+          value: selectedId,
         });
       }
     });
