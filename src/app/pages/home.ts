@@ -20,6 +20,7 @@ import { RouterLink } from '@angular/router';
 import { TransactionService } from '../services/transaction.service';
 import { Preferences } from '@capacitor/preferences';
 import { OPERATION_KEYS } from '../constants';
+import { WalletService } from '../services/wallet.service';
 
 @Component({
   selector: 'home',
@@ -91,6 +92,7 @@ export class Home {
   private _authService = inject(AuthService);
   private _syncService = inject(SyncService);
   private _transactionService = inject(TransactionService);
+  private _walletService = inject(WalletService);
 
   protected readonly transactionTypes = this._transactionService.types;
 
@@ -103,6 +105,7 @@ export class Home {
       const userId = this._authService.currentUser()?.uid;
       if (userId) {
         await this._syncService.syncAll(userId);
+        this._walletService.loadAll(userId);
       }
     } catch (error) {
       console.error('Lỗi khi refresh:', error);

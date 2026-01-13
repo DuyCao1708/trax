@@ -51,10 +51,9 @@ export class InitializeAppService {
     await this._authService.initializeAuth();
 
     const status = await Network.getStatus();
-    const user = this._authService.currentUser();
 
-    if (user && status.connected) {
-      this.triggerSync();
+    if (status.connected) {
+      await this.triggerSync();
     }
   }
 

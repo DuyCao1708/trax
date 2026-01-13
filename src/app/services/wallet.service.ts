@@ -73,7 +73,7 @@ export class WalletService {
       newWallet.sync_status,
     ]);
 
-    this._wallets.update((current) => [WalletMapper.toModel(newWallet), ...current]);
+    this._wallets.update((current) => [...current, WalletMapper.toModel(newWallet)]);
 
     this._syncService.syncTableOnly(Entities.Wallets, userId);
 
