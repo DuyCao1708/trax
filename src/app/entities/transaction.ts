@@ -1,6 +1,6 @@
-import { SynctableEntity } from '.';
+import { SyncableEntity } from '.';
 
-export interface TransactionEntity extends SynctableEntity {
+export interface TransactionEntity extends SyncableEntity {
   id: string;
   type: TransactionType;
   amount: number;

@@ -1,4 +1,5 @@
 import { Entities } from '../entities';
+import { DEFAULT_CATEGORIES } from './default-categories';
 
 export const MIGRATION_STATEMENTS = [
   {
@@ -38,8 +39,24 @@ export const MIGRATION_STATEMENTS = [
       `CREATE INDEX IF NOT EXISTS idx_${Entities.Categories}_parent_id ON ${Entities.Categories}(parent_id);`,
       `CREATE INDEX IF NOT EXISTS idx_${Entities.Categories}_user_active ON ${Entities.Categories}(user_id, is_deleted);`,
 
-      // `INSERT OR IGNORE INTO ${Entities.Categories} (id, name, icon, color, parent_id, is_default, user_id, updated_at, is_deleted, sync_status)
-      //   VALUES ('sys_food', 'Ăn uống', 'restaurant', '#FF9500', NULL, 1, 'system', ${Date.now()}, 0, 1);`,
+      ...DEFAULT_CATEGORIES.map(
+        (cat) => `
+        INSERT OR IGNORE INTO ${Entities.Categories} 
+        (id, name, icon, color, parent_id, is_default, user_id, updated_at, is_deleted, sync_status)
+        VALUES (
+          '${cat.id}', 
+          '${cat.name.replace(/'/g, "''")}', 
+          '${cat.icon}', 
+          '${cat.color}', 
+          ${cat.parent_id ? `'${cat.parent_id}'` : 'NULL'}, 
+          1, 
+          'system', 
+          ${cat.updated_at}, 
+          0, 
+          1
+        );
+      `,
+      ),
     ],
   },
 ];

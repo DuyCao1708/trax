@@ -1,55 +1,100 @@
-import { Injectable, signal } from '@angular/core';
-import { Category } from '../models/category';
-import { Preferences } from '@capacitor/preferences';
-import { STORAGE_KEYS } from '../constants/index';
+import { inject, Injectable, linkedSignal, Signal, signal } from '@angular/core';
+import { Category, CategoryMapper } from '../models/category';
+import { DatabaseService } from './database.service';
+import { AuthService } from './auth.service';
+import { SyncService } from './sync.service';
+import { CategoryEntity } from '../entities/category';
+import { Entities, SyncStatus } from '../entities';
 
 @Injectable({
   providedIn: 'root',
 })
 export class CategoryService {
-  private _categories = signal<Category[]>([]);
-  readonly categories = this._categories.asReadonly();
+  private _databaseService = inject(DatabaseService);
+  private _authService = inject(AuthService);
+  private _syncService = inject(SyncService);
+  private _isLoading = false;
 
-  // constructor() {
-  //   this.loadInitialData();
-  // }
+  private _entities = signal<CategoryEntity[]>([]);
 
-  // async updateCategories(categories: Category[]) {
-  //   this._categories.set(categories);
-  //   await this.saveToStorage(categories);
-  // }
+  private _models = linkedSignal(() => this._entities().map(CategoryMapper.toModel));
 
-  // private async loadInitialData() {
-  //   const { value } = await Preferences.get({ key: STORAGE_KEYS.CATEGORIES });
+  get categories(): Signal<Category[]> {
+    const currentWallets = this._models();
+    const user = this._authService.currentUser();
 
-  //   if (value) {
-  //     this._categories.set(JSON.parse(value));
-  //   } else {
-  //     const defaultData = this.getDefaultCategories();
-  //     await this.saveToStorage(defaultData);
-  //     this._categories.set(defaultData);
-  //   }
-  // }
+    if (currentWallets.length === 0 && user && !this._isLoading) {
+      this.loadAll(user.uid);
+    }
 
-  // private async saveToStorage(data: Category[]) {
-  //   await Preferences.set({
-  //     key: STORAGE_KEYS.CATEGORIES,
-  //     value: JSON.stringify(data),
-  //   });
-  // }
+    return this._models;
+  }
 
-  // private getDefaultCategories(): Category[] {
-  //   return [
-  //     { id: 1, name: 'Ăn uống', icon: 'fast-food', color: '#ef4444', isDefault: true },
-  //     { id: 2, name: 'Di chuyển', icon: 'car', color: '#3b82f6', isDefault: true },
-  //     { id: 3, name: 'Mua sắm', icon: 'cart', color: '#eab308', isDefault: true },
-  //     { id: 4, name: 'Nhà cửa', icon: 'home', color: '#8b5cf6', isDefault: true },
-  //     { id: 5, name: 'Sức khỏe', icon: 'medical', color: '#10b981', isDefault: true },
-  //     { id: 6, name: 'Giải trí', icon: 'game-controller', color: '#f97316', isDefault: true },
-  //     { id: 7, name: 'Giáo dục', icon: 'school', color: '#6366f1', isDefault: true },
-  //     { id: 8, name: 'Làm đẹp', icon: 'shirt', color: '#ec4899', isDefault: true },
-  //     { id: 9, name: 'Tiền bạc', icon: 'wallet', color: '#22c55e', isDefault: true },
-  //     { id: 10, name: 'Khác', icon: 'ellipsis-horizontal', color: '#64748b', isDefault: true },
-  //   ];
-  // }
+  async loadAll(userId: string): Promise<CategoryEntity[]> {
+    this._isLoading = true;
+    try {
+      const sql = `SELECT * FROM ${Entities.Categories} WHERE (user_id = ? OR user_id = 'system') AND is_deleted = 0`;
+      const result = await this._databaseService.query(sql, [userId]);
+
+      const data = result.values || [];
+      this._entities.set(data);
+
+      return data;
+    } finally {
+      this._isLoading = false;
+    }
+  }
+
+  async update(id: string, data: { name: string; icon: string; color: string }, userId: string) {
+    const category = this._entities().find((cat) => cat.id === id);
+
+    if (!category) return;
+
+    const updatedAt = Date.now();
+
+    const updatedData = {
+      ...category,
+      name: data.name,
+      icon: data.icon,
+      color: data.color,
+      user_id: userId,
+      sync_status: SyncStatus.Pending,
+      updated_at: updatedAt,
+    };
+
+    const keys = Object.keys(updatedData);
+    const sql = `INSERT OR REPLACE INTO ${Entities.Categories} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`;
+
+    await this._databaseService.execute(sql, Object.values(updatedData));
+
+    this._entities.update((current) =>
+      current.map((category) => (category.id === id ? { ...category, ...data } : category)),
+    );
+
+    this._syncService.syncTableOnly(Entities.Categories, userId);
+  }
+
+  async delete(id: string, userId: string) {
+    const category = this.categories().find((cat) => cat.id === id);
+
+    if (!category) return;
+
+    const deletedItem = {
+      ...category,
+      user_id: userId,
+      is_deleted: 1,
+      sync_status: SyncStatus.Pending,
+      updated_at: Date.now(),
+    };
+
+    const keys = Object.keys(deletedItem);
+    const placeholders = keys.map(() => '?').join(',');
+    const sql = `INSERT OR REPLACE INTO ${Entities.Categories} (${keys.join(',')}) VALUES (${placeholders})`;
+
+    await this._databaseService.execute(sql, Object.values(deletedItem));
+
+    this._entities.update((current) => current.filter((wallet) => wallet.id !== id));
+
+    this._syncService.syncTableOnly(Entities.Wallets, userId);
+  }
 }

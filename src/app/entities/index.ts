@@ -13,7 +13,7 @@ export enum SyncStatus {
   Pending = 2,
 }
 
-export interface SynctableEntity {
+export interface SyncableEntity {
   user_id: string;
   updated_at: number;
   is_deleted: BooleanNumber;

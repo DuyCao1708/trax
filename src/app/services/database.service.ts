@@ -3,7 +3,8 @@ import { CapacitorSQLite, SQLiteDBConnection } from '@capacitor-community/sqlite
 import { SqliteService } from './sqlite.service';
 import { MIGRATION_STATEMENTS } from '../migrations';
 import { DATABASE_NAME } from '../constants/index';
-import { Entities } from '../entities';
+import { Entities, SyncStatus } from '../entities';
+import { DEFAULT_CATEGORIES } from '../migrations/default-categories';
 
 @Injectable({
   providedIn: 'root',
@@ -36,11 +37,49 @@ export class DatabaseService {
     return res;
   }
 
-  async clear() {
-    for (const tableName of Object.values(Entities).filter(
-      (entity) => ![Entities.Users].includes(entity),
-    )) {
-      await this._database.execute(`DELETE FROM ${tableName}`);
+  async executeSet(set: { statement: string; values: any[] }[]) {
+    const res = await this._database.executeSet(set);
+
+    if (this._sqliteService.platform === 'web') {
+      await this._sqliteService.sqliteConnection.saveToStore(DATABASE_NAME);
     }
+
+    return res;
+  }
+
+  async reset() {
+    const tables = Object.values(Entities).filter((t) => t !== Entities.Users);
+
+    await this.executeSet(
+      tables.map((table) => ({
+        statement: `DELETE FROM ${table}`,
+        values: [],
+      })),
+    );
+
+    await this.seedDefaultCategories();
+  }
+
+  private async seedDefaultCategories() {
+    const now = Date.now();
+    const statements = DEFAULT_CATEGORIES.map((cat) => ({
+      statement: `INSERT OR REPLACE INTO ${Entities.Categories} 
+      (id, name, icon, color, parent_id, is_default, user_id, updated_at, is_deleted, sync_status) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      values: [
+        cat.id,
+        cat.name,
+        cat.icon,
+        cat.color,
+        cat.parent_id,
+        1,
+        'system',
+        now,
+        0,
+        SyncStatus.Synced,
+      ],
+    }));
+
+    await this.executeSet(statements);
   }
 }

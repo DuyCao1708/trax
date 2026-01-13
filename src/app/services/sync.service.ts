@@ -2,10 +2,11 @@ import { inject, Injectable } from '@angular/core';
 import { DatabaseService } from './database.service';
 import { Preferences } from '@capacitor/preferences';
 import { FirebaseService } from './firebase.service';
-import { Entities, SyncStatus } from '../entities';
+import { Entities, SyncStatus, SyncableEntity } from '../entities';
 import { collection, doc, getDocs, orderBy, query, setDoc, where } from 'firebase/firestore';
 import { OPERATION_KEYS } from '../constants/index';
 import { Network } from '@capacitor/network';
+import { CategoryEntity } from '../entities/category';
 
 @Injectable({
   providedIn: 'root',
@@ -98,11 +99,15 @@ export class SyncService {
       if (!querySnapshot.empty) {
         let latestTimestamp = lastSyncTs;
 
+        const transformer = SYNC_TRANSFORMERS[tableName] || SYNC_TRANSFORMERS['default'];
+
         for (const fbDoc of querySnapshot.docs) {
           const remoteItem = fbDoc.data();
           const id = fbDoc.id;
 
-          await this.upsertLocal(tableName, { ...remoteItem, id });
+          const transformedItem = transformer({ ...remoteItem, id }, userId);
+
+          await this.upsertLocal(tableName, transformedItem);
 
           if (remoteItem['updated_at'] > latestTimestamp) {
             latestTimestamp = remoteItem['updated_at'];
@@ -134,9 +139,6 @@ export class SyncService {
     const keys = Object.keys(data);
     const values = Object.values(data);
 
-    keys.push('sync_status');
-    values.push(SyncStatus.Synced);
-
     const placeholders = keys.map(() => '?').join(',');
     const columns = keys.join(',');
 
@@ -145,3 +147,22 @@ export class SyncService {
   }
   //#endregion Private methods
 }
+
+export type TransformerFn<T = any> = (
+  data: T & SyncableEntity,
+  userId: string,
+) => T & SyncableEntity;
+
+export const SYNC_TRANSFORMERS: Partial<Record<Entities, TransformerFn>> & {
+  default: TransformerFn;
+} = {
+  [Entities.Categories]: (data: CategoryEntity, userId) => ({
+    ...data,
+    user_id: userId,
+    sync_status: SyncStatus.Synced,
+  }),
+  default: (data, userId) => ({
+    ...data,
+    sync_status: SyncStatus.Synced,
+  }),
+};

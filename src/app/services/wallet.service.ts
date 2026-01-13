@@ -1,4 +1,4 @@
-import { inject, Injectable, Signal, signal } from '@angular/core';
+import { computed, inject, Injectable, linkedSignal, Signal, signal } from '@angular/core';
 import { DatabaseService } from './database.service';
 import { WalletEntity } from '../entities/wallet';
 import { Entities, SyncStatus } from '../entities';
@@ -16,17 +16,19 @@ export class WalletService {
   private _syncService = inject(SyncService);
   private _isLoading = false;
 
-  private _wallets = signal<Wallet[]>([]);
+  private _entities = signal<WalletEntity[]>([]);
+
+  private _models = linkedSignal(() => this._entities().map(WalletMapper.toModel));
 
   get wallets(): Signal<Wallet[]> {
-    const currentWallets = this._wallets();
+    const currentWallets = this._models();
     const user = this._authService.currentUser();
 
     if (currentWallets.length === 0 && user && !this._isLoading) {
       this.loadAll(user.uid);
     }
 
-    return this._wallets.asReadonly();
+    return this._models;
   }
 
   get walletColors() {
@@ -40,7 +42,7 @@ export class WalletService {
       const result = await this._databaseService.query(sql, [userId]);
 
       const data = result.values || [];
-      this._wallets.set(data.map(WalletMapper.toModel));
+      this._entities.set(data);
 
       return data;
     } finally {
@@ -73,7 +75,7 @@ export class WalletService {
       newWallet.sync_status,
     ]);
 
-    this._wallets.update((current) => [...current, WalletMapper.toModel(newWallet)]);
+    this._entities.update((current) => [...current, newWallet]);
 
     this._syncService.syncTableOnly(Entities.Wallets, userId);
 
@@ -103,7 +105,7 @@ export class WalletService {
       userId,
     ]);
 
-    this._wallets.update((current) =>
+    this._entities.update((current) =>
       current.map((wallet) => (wallet.id === id ? { ...wallet, ...data } : wallet)),
     );
 
@@ -111,27 +113,37 @@ export class WalletService {
   }
 
   async reorderWallets(newOrder: Wallet[], userId: string) {
-    this._wallets.set(newOrder);
+    const updatedAt = Date.now();
+    const currentEntities = this._entities();
 
-    for (let i = 0; i < newOrder.length; i++) {
-      const sql = `
-        UPDATE ${Entities.Wallets} 
-        SET sort_order = ?, updated_at = ?, sync_status = ? 
-        WHERE id = ?
-      `;
-      await this._databaseService.execute(sql, [i, Date.now(), SyncStatus.Pending, newOrder[i].id]);
-    }
+    const updatedEntities = newOrder.map((model, index) => {
+      const entity = currentEntities.find((e) => e.id === model.id);
+      return {
+        ...entity,
+        sort_order: index,
+        sync_status: SyncStatus.Pending,
+        updated_at: updatedAt,
+      } as WalletEntity;
+    });
+
+    this._entities.set(updatedEntities);
+
+    const statements = updatedEntities.map((e) => ({
+      statement: `UPDATE ${Entities.Wallets} SET sort_order = ?, sync_status = ${SyncStatus.Pending}, updated_at = ${updatedAt} WHERE id = ?`,
+      values: [e.sort_order, e.id],
+    }));
+    await this._databaseService.executeSet(statements);
 
     this._syncService.syncTableOnly(Entities.Wallets, userId);
   }
 
   async delete(id: string, userId: string) {
-    const now = Date.now();
+    const updatedAt = Date.now();
     const sql = `UPDATE ${Entities.Wallets} SET is_deleted = 1, updated_at = ?, sync_status = ? WHERE id = ?`;
 
-    await this._databaseService.execute(sql, [now, SyncStatus.Pending, id]);
+    await this._databaseService.execute(sql, [updatedAt, SyncStatus.Pending, id]);
 
-    this._wallets.update((current) => current.filter((wallet) => wallet.id !== id));
+    this._entities.update((current) => current.filter((wallet) => wallet.id !== id));
 
     this._syncService.syncTableOnly(Entities.Wallets, userId);
   }

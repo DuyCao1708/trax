@@ -1,6 +1,6 @@
-import { SynctableEntity } from '.';
+import { SyncableEntity } from '.';
 
-export interface WalletEntity extends SynctableEntity {
+export interface WalletEntity extends SyncableEntity {
   id: string;
   name: string;
   balance: number;

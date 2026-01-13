@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, Signal, signal } from '@angular/core';
 import {
   IonItem,
   IonLabel,
@@ -17,6 +17,8 @@ import {
   IonInput,
 } from '@ionic/angular/standalone';
 import { CategoryService } from '../services/category.service';
+import { Category } from '../models/category';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'category-selections',
@@ -51,7 +53,7 @@ import { CategoryService } from '../services/category.service';
             </ion-button>
           }
 
-          <ion-button routerLink="/wallets-settings" (click)="dismiss()">
+          <ion-button routerLink="/categories-settings" (click)="updateTest()">
             <ion-icon slot="icon-only" name="settings-sharp"></ion-icon>
           </ion-button>
         </ion-buttons>
@@ -78,7 +80,7 @@ import { CategoryService } from '../services/category.service';
       } @else {
         <ion-list class="relative" lines="none">
           <ion-list-header>
-            <ion-label class="ms-4 text-gray-500">Categories</ion-label>
+            <ion-label class="opacity-50">Categories</ion-label>
           </ion-list-header>
 
           @if (!categories().length) {
@@ -107,14 +109,27 @@ import { CategoryService } from '../services/category.service';
   styles: ``,
 })
 export class CategorySelections {
-  protected readonly categories = inject(CategoryService).categories;
+  private _categoryService = inject(CategoryService);
+  private _authService = inject(AuthService);
   private _modalCtrl = inject(ModalController);
 
   protected isSearching = signal<boolean>(false);
+
+  protected categories: Signal<Category[]> = this._categoryService.categories;
 
   constructor() {}
 
   async dismiss() {
     await this._modalCtrl.dismiss();
+  }
+
+  async updateTest() {
+    const user = this._authService.currentUser();
+
+    if (!user) return;
+
+    const cat = this.categories()[0];
+
+    this._categoryService.update(cat.id, { ...cat, name: 'F&D hehe', color: 'red' }, user.uid);
   }
 }

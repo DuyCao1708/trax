@@ -83,7 +83,7 @@ export class AuthService {
 
     await this.removeUserOperationPreferences();
 
-    await this._databaseService.clear();
+    await this._databaseService.reset();
 
     this.currentUser.set(null);
     this._router.navigate(['/']);
