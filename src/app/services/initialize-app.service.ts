@@ -17,12 +17,7 @@ export class InitializeAppService {
   async initializeApp() {
     try {
       await this.initializeDatabase();
-      await this._authService.initializeAuth();
-
-      const status = await Network.getStatus();
-      if (status.connected) {
-        this.triggerSync();
-      }
+      await this.initializeAuth();
 
       this.listenOnNetworkChanges();
     } catch (error) {
@@ -52,10 +47,21 @@ export class InitializeAppService {
     }
   }
 
-  private triggerSync() {
+  private async initializeAuth() {
+    await this._authService.initializeAuth();
+
+    const status = await Network.getStatus();
+    const user = this._authService.currentUser();
+
+    if (user && status.connected) {
+      this.triggerSync();
+    }
+  }
+
+  private async triggerSync() {
     const userId = this._authService.currentUser()?.uid;
     if (userId) {
-      this._syncService.syncAll(userId);
+      await this._syncService.syncAll(userId);
     }
   }
 }

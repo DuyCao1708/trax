@@ -16,6 +16,8 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { AppUser } from '../entities/app-user';
 import { Entities } from '../entities';
 import { Router } from '@angular/router';
+import { SyncService } from './sync.service';
+import { DatabaseService } from './database.service';
 
 @Injectable({
   providedIn: 'root',
@@ -23,6 +25,8 @@ import { Router } from '@angular/router';
 export class AuthService {
   private _auth = inject(FirebaseService).auth;
   private _firestore = inject(FirebaseService).database;
+  private _databaseService = inject(DatabaseService);
+  private _syncService = inject(SyncService);
   private _alert = inject(AlertController);
   private _router = inject(Router);
 
@@ -68,14 +72,19 @@ export class AuthService {
 
       this.restoreSettingsFromCloud(userCredential.user);
 
+      await this._syncService.syncAll(userCredential.user.uid);
+
       this._router.navigate(['/home']);
     }
   }
 
   async logout() {
     await signOut(this._auth);
-    await Preferences.remove({ key: OPERATION_KEYS.CACHED_USER });
-    await Preferences.remove({ key: OPERATION_KEYS.USE_BIOMETRIC });
+
+    await this.removeUserOperationPreferences();
+
+    await this._databaseService.clear();
+
     this.currentUser.set(null);
     this._router.navigate(['/']);
   }
@@ -158,6 +167,19 @@ export class AuthService {
       ],
     });
     await alert.present();
+  }
+
+  private async removeUserOperationPreferences() {
+    const { keys } = await Preferences.keys();
+    const staticKeys = Object.values(OPERATION_KEYS);
+
+    for (const key of keys) {
+      const shouldRemove = staticKeys.some((sKey) => key.startsWith(sKey));
+
+      if (shouldRemove) {
+        await Preferences.remove({ key });
+      }
+    }
   }
   //#endregion Private methods
 }

@@ -3,6 +3,7 @@ import { CapacitorSQLite, SQLiteDBConnection } from '@capacitor-community/sqlite
 import { SqliteService } from './sqlite.service';
 import { MIGRATION_STATEMENTS } from '../migrations';
 import { DATABASE_NAME } from '../constants/index';
+import { Entities } from '../entities';
 
 @Injectable({
   providedIn: 'root',
@@ -33,5 +34,13 @@ export class DatabaseService {
     }
 
     return res;
+  }
+
+  async clear() {
+    for (const tableName of Object.values(Entities).filter(
+      (entity) => ![Entities.Users].includes(entity),
+    )) {
+      await this._database.execute(`DELETE FROM ${tableName}`);
+    }
   }
 }

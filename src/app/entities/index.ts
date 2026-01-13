@@ -1,7 +1,7 @@
 export enum Entities {
   // Patterns = 'patterns',
   Wallets = 'wallets',
-  // Categories = 'categories',
+  Categories = 'categories',
   Users = 'users',
 }
 

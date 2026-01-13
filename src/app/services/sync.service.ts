@@ -6,7 +6,6 @@ import { Entities, SyncStatus } from '../entities';
 import { collection, doc, getDocs, orderBy, query, setDoc, where } from 'firebase/firestore';
 import { OPERATION_KEYS } from '../constants/index';
 import { Network } from '@capacitor/network';
-import { ToastController } from '@ionic/angular/standalone';
 
 @Injectable({
   providedIn: 'root',
@@ -14,7 +13,6 @@ import { ToastController } from '@ionic/angular/standalone';
 export class SyncService {
   private _databaseService = inject(DatabaseService);
   private _firestore = inject(FirebaseService).database;
-  private _toastCtrl = inject(ToastController);
 
   private _isSyncing = false;
   private _syncingTables: { [key: string]: boolean } = {};
@@ -41,7 +39,7 @@ export class SyncService {
     }
   }
 
-  async syncTableOnly(tableName: string, userId: string, pushOnly = false) {
+  async syncTableOnly(tableName: Entities, userId: string, pushOnly = false) {
     if (this._syncingTables[tableName]) return;
 
     const status = await Network.getStatus();
@@ -61,7 +59,7 @@ export class SyncService {
   }
 
   //#region Private methods
-  private async pushTable(tableName: string, userId: string) {
+  private async pushTable(tableName: Entities, userId: string) {
     const localData = await this._databaseService.query(
       `SELECT * FROM ${tableName} WHERE sync_status IN (?, ?) AND user_id = ?`,
       [SyncStatus.Pending, SyncStatus.Failed, userId],
@@ -70,7 +68,7 @@ export class SyncService {
     if (localData.values?.length) {
       for (const item of localData.values) {
         try {
-          await this.updateFirebaseDoc(tableName, item.id, item);
+          await this.updateFirebaseDoc(tableName, item.id, item, userId);
 
           await this._databaseService.execute(
             `UPDATE ${tableName} SET sync_status = ? WHERE id = ?`,
@@ -86,19 +84,14 @@ export class SyncService {
     }
   }
 
-  private async pullTable(tableName: string, userId: string) {
+  private async pullTable(tableName: Entities, userId: string) {
     try {
       const syncKey = `${OPERATION_KEYS.LAST_SYNC}_${tableName}_${userId}`;
       const { value: lastSync } = await Preferences.get({ key: syncKey });
       const lastSyncTs = lastSync ? parseInt(lastSync) : 0;
 
-      const colRef = collection(this._firestore, tableName);
-      const q = query(
-        colRef,
-        where('user_id', '==', userId),
-        where('updated_at', '>', lastSyncTs),
-        orderBy('updated_at', 'asc'),
-      );
+      const colRef = collection(this._firestore, `${Entities.Users}/${userId}/${tableName}`);
+      const q = query(colRef, where('updated_at', '>', lastSyncTs), orderBy('updated_at', 'asc'));
 
       const querySnapshot = await getDocs(q);
 
@@ -126,13 +119,18 @@ export class SyncService {
     }
   }
 
-  private async updateFirebaseDoc(tableName: string, id: string, data: any): Promise<void> {
-    const docRef = doc(this._firestore, tableName, id);
+  private async updateFirebaseDoc(
+    tableName: Entities,
+    id: string,
+    data: any,
+    userId: string,
+  ): Promise<void> {
+    const docRef = doc(this._firestore, `${Entities.Users}/${userId}/${tableName}/${id}`);
     const { sync_status, ...dataToSync } = data;
     return await setDoc(docRef, dataToSync, { merge: true });
   }
 
-  private async upsertLocal(tableName: string, data: any) {
+  private async upsertLocal(tableName: Entities, data: any) {
     const keys = Object.keys(data);
     const values = Object.values(data);
 

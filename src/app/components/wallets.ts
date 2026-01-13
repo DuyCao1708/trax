@@ -1,4 +1,4 @@
-import { Component, effect, inject, output, Signal, signal } from '@angular/core';
+import { Component, effect, inject, output, Signal, signal, untracked } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { IonButton, IonIcon } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
@@ -73,34 +73,27 @@ export class Wallets {
 
   constructor() {
     effect(() => {
-      const selectedId = this.selected();
+      const wallets = this.wallets();
+      const currentSelected = untracked(() => this.selected());
 
-      if (selectedId !== '') {
-        this.walletSelected.emit(selectedId);
+      if (!currentSelected && wallets.length > 0) {
+        this.selected.set(wallets[0].id);
 
-        this.saveSelectedWalletToPreference(selectedId);
+        Preferences.set({
+          key: OPERATION_KEYS.SELECTED_WALLET,
+          value: wallets[0].id,
+        });
       }
     });
   }
 
   async ngOnInit() {
-    const wallets = this.wallets();
-
     const { value: selectedWalletId } = await Preferences.get({
       key: OPERATION_KEYS.SELECTED_WALLET,
     });
 
     if (selectedWalletId) {
       this.selected.set(selectedWalletId);
-    } else if (wallets.length) {
-      this.selected.set(wallets[0].id);
     }
-  }
-
-  async saveSelectedWalletToPreference(walletId: string) {
-    await Preferences.set({
-      key: OPERATION_KEYS.SELECTED_WALLET,
-      value: walletId.toString(),
-    });
   }
 }

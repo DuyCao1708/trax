@@ -1,8 +1,9 @@
-export interface Category {
-  id: number;
-  name: string;
-  icon: string;
-  color: string;
+import { CategoryEntity } from '../entities/category';
+
+export interface Category extends Omit<
+  CategoryEntity,
+  'parent_id' | 'is_default' | 'user_id' | 'updated_at' | 'sync_status'
+> {
   isDefault: boolean;
   parentId?: string;
 }
