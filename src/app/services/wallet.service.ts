@@ -14,22 +14,10 @@ export class WalletService {
   private _databaseService = inject(DatabaseService);
   private _authService = inject(AuthService);
   private _syncService = inject(SyncService);
-  private _isLoading = false;
 
   private _entities = signal<WalletEntity[]>([]);
 
-  private _models = linkedSignal(() => this._entities().map(WalletMapper.toModel));
-
-  get wallets(): Signal<Wallet[]> {
-    const currentWallets = this._models();
-    const user = this._authService.currentUser();
-
-    if (currentWallets.length === 0 && user && !this._isLoading) {
-      this.loadAll(user.uid);
-    }
-
-    return this._models;
-  }
+  readonly wallets = computed(() => this._entities().map(WalletMapper.toModel));
 
   get walletColors() {
     return ['teal', 'blue', 'amber', 'red', 'violet', 'pink', 'cyan', 'orange'];
@@ -39,23 +27,19 @@ export class WalletService {
     effect(() => {
       const user = this._authService.currentUser();
 
-      if (!user) this._entities.set([]);
+      if (user) this.loadAll(user.uid);
+      else this._entities.set([]);
     });
   }
 
   async loadAll(userId: string): Promise<WalletEntity[]> {
-    this._isLoading = true;
-    try {
-      const sql = `SELECT * FROM ${Entities.Wallets} WHERE user_id = ? AND is_deleted = 0 ORDER BY sort_order ASC`;
-      const result = await this._databaseService.query(sql, [userId]);
+    const sql = `SELECT * FROM ${Entities.Wallets} WHERE user_id = ? AND is_deleted = 0 ORDER BY sort_order ASC`;
+    const result = await this._databaseService.query(sql, [userId]);
 
-      const data = result.values || [];
-      this._entities.set(data);
+    const data = result.values || [];
+    this._entities.set(data);
 
-      return data;
-    } finally {
-      this._isLoading = false;
-    }
+    return data;
   }
 
   async create(data: { name: string; balance: number; currency: string }, userId: string) {

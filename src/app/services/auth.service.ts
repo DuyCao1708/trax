@@ -68,11 +68,12 @@ export class AuthService {
       const credential = GoogleAuthProvider.credential(idToken);
       const userCredential = await signInWithCredential(this._auth, credential);
       await this.updateUserCache(userCredential.user);
+
+      await this._syncService.syncAll(userCredential.user.uid);
+
       this.currentUser.set(userCredential.user);
 
       this.restoreSettingsFromCloud(userCredential.user);
-
-      await this._syncService.syncAll(userCredential.user.uid);
 
       this._router.navigate(['/home']);
     }

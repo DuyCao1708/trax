@@ -1,4 +1,4 @@
-import { effect, inject, Injectable, linkedSignal, Signal, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, linkedSignal, Signal, signal } from '@angular/core';
 import { Category, CategoryMapper } from '../models/category';
 import { DatabaseService } from './database.service';
 import { AuthService } from './auth.service';
@@ -13,44 +13,28 @@ export class CategoryService {
   private _databaseService = inject(DatabaseService);
   private _authService = inject(AuthService);
   private _syncService = inject(SyncService);
-  private _isLoading = false;
 
   private _entities = signal<CategoryEntity[]>([]);
 
-  private _models = linkedSignal(() => this._entities().map(CategoryMapper.toModel));
-
-  get categories(): Signal<Category[]> {
-    const currentWallets = this._models();
-    const user = this._authService.currentUser();
-
-    if (currentWallets.length === 0 && user && !this._isLoading) {
-      this.loadAll(user.uid);
-    }
-
-    return this._models;
-  }
+  readonly categories = computed(() => this._entities().map(CategoryMapper.toModel));
 
   constructor() {
     effect(() => {
       const user = this._authService.currentUser();
 
-      if (!user) this._entities.set([]);
+      if (user) this.loadAll(user.uid);
+      else this._entities.set([]);
     });
   }
 
   async loadAll(userId: string): Promise<CategoryEntity[]> {
-    this._isLoading = true;
-    try {
-      const sql = `SELECT * FROM ${Entities.Categories} WHERE (user_id = ? OR user_id = 'system') AND is_deleted = 0`;
-      const result = await this._databaseService.query(sql, [userId]);
+    const sql = `SELECT * FROM ${Entities.Categories} WHERE (user_id = ? OR user_id = 'system') AND is_deleted = 0`;
+    const result = await this._databaseService.query(sql, [userId]);
 
-      const data = result.values || [];
-      this._entities.set(data);
+    const data = result.values || [];
+    this._entities.set(data);
 
-      return data;
-    } finally {
-      this._isLoading = false;
-    }
+    return data;
   }
 
   async update(id: string, data: { name: string; icon: string; color: string }, userId: string) {
