@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, linkedSignal, Signal, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, linkedSignal, Signal, signal } from '@angular/core';
 import { DatabaseService } from './database.service';
 import { WalletEntity } from '../entities/wallet';
 import { Entities, SyncStatus } from '../entities';
@@ -33,6 +33,14 @@ export class WalletService {
 
   get walletColors() {
     return ['teal', 'blue', 'amber', 'red', 'violet', 'pink', 'cyan', 'orange'];
+  }
+
+  constructor() {
+    effect(() => {
+      const user = this._authService.currentUser();
+
+      if (!user) this._entities.set([]);
+    });
   }
 
   async loadAll(userId: string): Promise<WalletEntity[]> {

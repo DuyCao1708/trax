@@ -1,4 +1,4 @@
-import { inject, Injectable, linkedSignal, Signal, signal } from '@angular/core';
+import { effect, inject, Injectable, linkedSignal, Signal, signal } from '@angular/core';
 import { Category, CategoryMapper } from '../models/category';
 import { DatabaseService } from './database.service';
 import { AuthService } from './auth.service';
@@ -28,6 +28,14 @@ export class CategoryService {
     }
 
     return this._models;
+  }
+
+  constructor() {
+    effect(() => {
+      const user = this._authService.currentUser();
+
+      if (!user) this._entities.set([]);
+    });
   }
 
   async loadAll(userId: string): Promise<CategoryEntity[]> {
