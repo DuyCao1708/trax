@@ -1,4 +1,4 @@
-import { BooleanNumber, SyncableEntity } from '.';
+import { SyncableEntity } from '.';
 
 export interface CategoryEntity extends SyncableEntity {
   id: string;
@@ -6,5 +6,4 @@ export interface CategoryEntity extends SyncableEntity {
   icon: string;
   color: string;
   parent_id?: string;
-  is_default: BooleanNumber;
 }
