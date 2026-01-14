@@ -50,7 +50,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
     </ion-header>
 
     <ion-content>
-      <div class="relative flex justify-end h-16 mt-4">
+      <div class="relative flex justify-end items-center h-16 mt-4">
         <ion-button
           shape="round"
           class="absolute top-1/2 left-1/2 -translate-1/2 mr-4 w-16 h-16"
