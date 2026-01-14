@@ -127,7 +127,7 @@ import { CategoryService } from '../services/category.service';
 
             <div (click)="openCategorySelectionModal()">
               <p>Category</p>
-              <p class="uppercase">{{ categoryData()?.name || '' }}</p>
+              <p class="uppercase text-nowrap truncate">{{ categoryData()?.name || '' }}</p>
             </div>
           </section>
         </div>

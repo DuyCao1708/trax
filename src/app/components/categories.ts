@@ -1,6 +1,6 @@
-import { Component, computed, inject, output, Signal } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { CategoryService } from '../services/category.service';
-import { IonList, IonContent, IonNav } from '@ionic/angular/standalone';
+import { IonList, IonContent, IonNav, NavParams } from '@ionic/angular/standalone';
 import { Category } from '../models/category';
 import { CategoryDetail } from './category-detail';
 import { CategoryItem } from './category-item';
@@ -10,7 +10,7 @@ import { CategoryItem } from './category-item';
   imports: [IonList, IonContent, CategoryItem],
   template: `
     <ion-content>
-      @if (frequentCategories().length) {
+      @if (showFrequentCategories && frequentCategories().length) {
         <h6 class="font-medium opacity-50 text-sm m-3">MOST FREQUENT</h6>
 
         <section class="bg-(--ion-item-background) py-4">
@@ -33,12 +33,15 @@ import { CategoryItem } from './category-item';
 export class Categories {
   private _categoryService = inject(CategoryService);
   private _nav = inject(IonNav, { optional: true });
+  private _navParams = inject(NavParams, { optional: true });
 
   protected categories = computed(() =>
     this._categoryService.categories().filter((cat) => !cat.parentId),
   );
 
   protected frequentCategories = this._categoryService.frequentCategories;
+
+  readonly showFrequentCategories = this._navParams?.get('showFrequentCategories');
 
   // Injectable from IonNav
   onCategorySelected = (category: Category) => {};

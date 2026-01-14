@@ -28,8 +28,8 @@ import { CategoryItem } from './category-item';
   `,
 })
 export class CategoryDetail {
-  private navParams = inject(NavParams);
+  private _navParams = inject(NavParams);
 
-  category: Category = this.navParams.get('category');
-  onCategorySelected = this.navParams.get('onCategorySelected');
+  category: Category = this._navParams.get('category');
+  onCategorySelected = this._navParams.get('onCategorySelected');
 }

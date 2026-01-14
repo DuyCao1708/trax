@@ -28,12 +28,12 @@ import { debounceTime, distinctUntilChanged, map } from 'rxjs';
 })
 export class CategoriesSearchResult {
   private _categoryService = inject(CategoryService);
-  private navParams = inject(NavParams);
+  private _navParams = inject(NavParams);
 
   protected categories = this._categoryService.categories;
 
-  searchControl: FormControl<string> = this.navParams.get('searchControl');
-  onCategorySelected = this.navParams.get('onCategorySelected');
+  searchControl: FormControl<string> = this._navParams.get('searchControl');
+  onCategorySelected = this._navParams.get('onCategorySelected');
 
   searchTerm = toSignal(
     this.searchControl.valueChanges.pipe(

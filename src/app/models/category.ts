@@ -8,6 +8,7 @@ export interface Category extends Omit<
   parentId?: string;
   subCategories?: Category[];
   parentCategory?: Category;
+  isDeleted: boolean;
 }
 
 export const CategoryMapper: Mapper<CategoryEntity, Category> = {
@@ -18,6 +19,7 @@ export const CategoryMapper: Mapper<CategoryEntity, Category> = {
       icon: entity.icon,
       color: `var(--color-${entity.color}-500)`,
       parentId: entity.parent_id || undefined,
+      isDeleted: entity.is_deleted == 1,
     };
   },
 };

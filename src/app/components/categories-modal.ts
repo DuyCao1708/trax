@@ -16,6 +16,8 @@ import { Categories } from './categories';
 import { CategoriesSearchResult } from './categories-search-result';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Autofocus } from '../directives/autofocus';
+import { Router } from '@angular/router';
+import { CategoryDetail } from './category-detail';
 
 @Component({
   selector: 'categories-modal',
@@ -48,7 +50,7 @@ import { Autofocus } from '../directives/autofocus';
             </ion-button>
           }
 
-          <ion-button routerLink="/categories-settings" (click)="dismiss()">
+          <ion-button (click)="openSettings()">
             <ion-icon slot="icon-only" name="settings-sharp"></ion-icon>
           </ion-button>
         </ion-buttons>
@@ -87,6 +89,7 @@ import { Autofocus } from '../directives/autofocus';
 export class CategoriesModal {
   private _modalCtrl = inject(ModalController);
   private _nav = viewChild.required(IonNav);
+  private _router = inject(Router);
 
   protected isSearching = signal<boolean>(false);
 
@@ -94,6 +97,7 @@ export class CategoriesModal {
 
   ngAfterViewInit() {
     this._nav().setRoot(Categories, {
+      showFrequentCategories: true,
       onCategorySelected: (category: Category) => this._modalCtrl.dismiss(category),
     });
   }
@@ -108,6 +112,23 @@ export class CategoriesModal {
         this._modalCtrl.dismiss(category);
       },
     });
+  }
+
+  async openSettings() {
+    const activeView = await this._nav().getActive();
+    let contextId = null;
+
+    if (activeView?.component === CategoryDetail) {
+      contextId = activeView.params?.['category']?.id;
+    }
+
+    if (contextId) {
+      this._router.navigate(['/category-form', contextId]);
+    } else {
+      this._router.navigate(['/categories-settings']);
+    }
+
+    this.dismiss();
   }
 
   async handleBack() {

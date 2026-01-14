@@ -6,6 +6,8 @@ import { guestGuard } from './guards/guest-guard';
 import { WalletForm } from './pages/wallet-form';
 import { WalletsSettings } from './pages/wallets-settings';
 import { QuickTransactionForm } from './pages/quick-transaction-form';
+import { CategoriesSettings } from './pages/categories-settings';
+import { CategoryForm } from './pages/category-form';
 
 export const routes: Routes = [
   { path: '', component: Login, runGuardsAndResolvers: 'always', canActivate: [guestGuard] },
@@ -30,6 +32,18 @@ export const routes: Routes = [
   {
     path: 'wallets-settings',
     component: WalletsSettings,
+    runGuardsAndResolvers: 'always',
+    canActivate: [authenticationGuard],
+  },
+  {
+    path: 'categories-settings',
+    component: CategoriesSettings,
+    runGuardsAndResolvers: 'always',
+    canActivate: [authenticationGuard],
+  },
+  {
+    path: 'category-form/:id',
+    component: CategoryForm,
     runGuardsAndResolvers: 'always',
     canActivate: [authenticationGuard],
   },
