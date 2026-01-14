@@ -7,6 +7,7 @@ export interface Category extends Omit<
 > {
   parentId?: string;
   subCategories?: Category[];
+  parentCategory?: Category;
 }
 
 export const CategoryMapper: Mapper<CategoryEntity, Category> = {

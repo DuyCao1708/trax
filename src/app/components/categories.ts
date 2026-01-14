@@ -34,17 +34,9 @@ export class Categories {
   private _categoryService = inject(CategoryService);
   private _nav = inject(IonNav, { optional: true });
 
-  protected categories = computed(() => {
-    const allModels: Category[] = this._categoryService.categories();
-
-    return allModels.reduce<Category[]>((tree, cat) => {
-      if (!cat.parentId) {
-        cat.subCategories = allModels.filter((sub) => sub.parentId === cat.id);
-        tree.push(cat);
-      }
-      return tree;
-    }, []);
-  });
+  protected categories = computed(() =>
+    this._categoryService.categories().filter((cat) => !cat.parentId),
+  );
 
   protected frequentCategories = this._categoryService.frequentCategories;
 

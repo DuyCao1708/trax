@@ -11,10 +11,17 @@ import { IonButton, IonIcon, IonLabel, IonItem } from '@ionic/angular/standalone
         <ion-icon slot="icon-only" class="text-white text-xl" [name]="category().icon"></ion-icon>
       </ion-button>
 
-      <ion-label>{{ category().name }}</ion-label>
+      <ion-label>
+        <span>{{ category().name }}</span>
+
+        @if (showParent() && category().parentCategory) {
+          <p>{{ category().parentCategory!.name }}</p>
+        }
+      </ion-label>
     </ion-item>
   `,
 })
 export class CategoryItem {
   category = input.required<Category>();
+  showParent = input<boolean>(false);
 }

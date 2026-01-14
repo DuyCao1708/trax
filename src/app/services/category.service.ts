@@ -18,7 +18,26 @@ export class CategoryService {
 
   private _entities = signal<CategoryEntity[]>([]);
 
-  readonly categories = computed(() => this._entities().map(CategoryMapper.toModel));
+  readonly categories = computed(() => {
+    const allModels = this._entities().map(CategoryMapper.toModel);
+
+    const categoryMap = new Map<string, Category>();
+    allModels.forEach((cat) => categoryMap.set(cat.id, cat));
+
+    allModels.forEach((cat) => {
+      if (cat.parentId) {
+        const parent = categoryMap.get(cat.parentId);
+        if (parent) {
+          cat.parentCategory = parent;
+
+          if (!parent.subCategories) parent.subCategories = [];
+          parent.subCategories.push(cat);
+        }
+      }
+    });
+
+    return allModels;
+  });
 
   private _frequentIds = signal<string[]>([]);
 

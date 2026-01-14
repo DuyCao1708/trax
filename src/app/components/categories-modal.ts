@@ -1,4 +1,4 @@
-import { Component, inject, Signal, signal, viewChild } from '@angular/core';
+import { Component, inject, signal, viewChild } from '@angular/core';
 import {
   IonButton,
   IonIcon,
@@ -11,10 +11,11 @@ import {
   IonInput,
   IonNav,
 } from '@ionic/angular/standalone';
-import { CategoryService } from '../services/category.service';
 import { Category } from '../models/category';
-import { AuthService } from '../services/auth.service';
 import { Categories } from './categories';
+import { CategoriesSearchResult } from './categories-search-result';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { Autofocus } from '../directives/autofocus';
 
 @Component({
   selector: 'categories-modal',
@@ -28,6 +29,8 @@ import { Categories } from './categories';
     IonContent,
     IonInput,
     IonNav,
+    ReactiveFormsModule,
+    Autofocus,
   ],
   template: `
     <ion-header>
@@ -40,7 +43,7 @@ import { Categories } from './categories';
 
         <ion-buttons slot="end">
           @if (!isSearching()) {
-            <ion-button (click)="isSearching.set(!isSearching())">
+            <ion-button (click)="openSearchResult()">
               <ion-icon slot="icon-only" name="search-sharp"></ion-icon>
             </ion-button>
           }
@@ -52,12 +55,18 @@ import { Categories } from './categories';
 
         @if (isSearching()) {
           <ion-input
-            [autofocus]="true"
+            [formControl]="searchControl"
+            autofocus
             placeholder="Search for category..."
             [style.--highlight-color-focused]="'var(--ion-background-color-step-100)'"
             [style.--highlight-color-valid]="'transparent'"
           >
-            <ion-button fill="clear" slot="end" [style.--color]="'var(--ion-text-color)'">
+            <ion-button
+              fill="clear"
+              slot="end"
+              [style.--color]="'var(--ion-text-color)'"
+              (click)="handleBack()"
+            >
               <ion-icon slot="icon-only" name="close-sharp"></ion-icon>
             </ion-button>
           </ion-input>
@@ -74,17 +83,14 @@ import { Categories } from './categories';
       } @else {}
     </ion-content>
   `,
-  styles: ``,
 })
 export class CategoriesModal {
-  private _categoryService = inject(CategoryService);
-  private _authService = inject(AuthService);
   private _modalCtrl = inject(ModalController);
   private _nav = viewChild.required(IonNav);
 
   protected isSearching = signal<boolean>(false);
 
-  protected categories: Signal<Category[]> = this._categoryService.categories;
+  searchControl = new FormControl<string>('', { nonNullable: true });
 
   ngAfterViewInit() {
     this._nav().setRoot(Categories, {
@@ -92,11 +98,20 @@ export class CategoriesModal {
     });
   }
 
+  openSearchResult() {
+    this.isSearching.set(true);
+
+    this._nav().push(CategoriesSearchResult, {
+      searchControl: this.searchControl,
+      onCategorySelected: (category: Category) => {
+        this.isSearching.set(false);
+        this._modalCtrl.dismiss(category);
+      },
+    });
+  }
+
   async handleBack() {
-    if (this.isSearching()) {
-      this.isSearching.set(false);
-      return;
-    }
+    if (this.isSearching()) this.isSearching.set(false);
 
     const nav = this._nav();
 
