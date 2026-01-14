@@ -19,7 +19,7 @@ import { Wallet } from '../models/wallet';
 import { RouterLink } from '@angular/router';
 
 @Component({
-  selector: 'wallet-selections',
+  selector: 'wallets-modal',
   imports: [
     IonHeader,
     IonToolbar,
@@ -59,7 +59,7 @@ import { RouterLink } from '@angular/router';
         @for (wallet of wallets(); track wallet.id; let index = $index) {
           <ion-item
             class="not-last:border-b border-(--ion-text-color-step-800)"
-            (click)="selectWallet(wallet.id)"
+            (click)="selectWallet(wallet)"
           >
             <div class="p-3 rounded-sm mr-4" [class]="colors[index % colors.length]"></div>
             <ion-label> {{ wallet.name }} </ion-label>
@@ -80,7 +80,7 @@ import { RouterLink } from '@angular/router';
     </ion-content>
   `,
 })
-export class WalletSelections {
+export class WalletsModal {
   private _walletService = inject(WalletService);
   private _modalCtrl = inject(ModalController);
 
@@ -90,8 +90,8 @@ export class WalletSelections {
     return this._walletService.walletColors.map((color) => `bg-${color}-500`);
   }
 
-  async selectWallet(walletId: string) {
-    await this._modalCtrl.dismiss(walletId);
+  async selectWallet(wallet: Wallet) {
+    await this._modalCtrl.dismiss(wallet);
   }
 
   async dismiss() {

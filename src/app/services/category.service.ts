@@ -1,10 +1,12 @@
-import { computed, effect, inject, Injectable, linkedSignal, Signal, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { Category, CategoryMapper } from '../models/category';
 import { DatabaseService } from './database.service';
 import { AuthService } from './auth.service';
 import { SyncService } from './sync.service';
 import { CategoryEntity } from '../entities/category';
 import { Entities, SyncStatus } from '../entities';
+import { OPERATION_KEYS } from '../constants';
+import { Preferences } from '@capacitor/preferences';
 
 @Injectable({
   providedIn: 'root',
@@ -17,6 +19,12 @@ export class CategoryService {
   private _entities = signal<CategoryEntity[]>([]);
 
   readonly categories = computed(() => this._entities().map(CategoryMapper.toModel));
+
+  private _frequentIds = signal<string[]>([]);
+
+  readonly frequentCategories = computed(() =>
+    this.categories().filter((cat) => this._frequentIds().includes(cat.id)),
+  );
 
   constructor() {
     effect(() => {
@@ -88,5 +96,24 @@ export class CategoryService {
     this._entities.update((current) => current.filter((wallet) => wallet.id !== id));
 
     this._syncService.syncTableOnly(Entities.Wallets, userId);
+  }
+
+  async addToFrequent(id: string, userId: string) {
+    const key = `${OPERATION_KEYS.FREQUENT_CATEGORIES}_${userId}`;
+
+    const { value } = await Preferences.get({ key });
+
+    let ids: string[] = value ? JSON.parse(value) : [];
+
+    ids = [id, ...ids.filter((oldId) => oldId !== id)];
+
+    ids = ids.slice(0, 8);
+
+    await Preferences.set({
+      key,
+      value: JSON.stringify(ids),
+    });
+
+    this._frequentIds.set(ids);
   }
 }

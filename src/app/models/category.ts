@@ -6,6 +6,7 @@ export interface Category extends Omit<
   'parent_id' | 'user_id' | 'updated_at' | 'sync_status' | 'is_deleted'
 > {
   parentId?: string;
+  subCategories?: Category[];
 }
 
 export const CategoryMapper: Mapper<CategoryEntity, Category> = {
