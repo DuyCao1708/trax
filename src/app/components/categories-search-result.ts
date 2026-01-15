@@ -1,7 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { FormControl } from '@angular/forms';
-import { NavParams } from '@ionic/angular/common';
-import { IonContent, IonList } from '@ionic/angular/standalone';
+import { IonList, NavParams } from '@ionic/angular/standalone';
 import { CategoryItem } from './category-item';
 import { CategoryService } from '../services/category.service';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -9,21 +8,19 @@ import { debounceTime, distinctUntilChanged, map } from 'rxjs';
 
 @Component({
   selector: 'categories-search-result',
-  imports: [IonContent, IonList, CategoryItem],
+  imports: [IonList, CategoryItem],
   template: `
-    <ion-content>
-      <ion-list lines="full">
-        @for (category of filteredCategories(); track $index) {
-          <category-item
-            [showParent]="true"
-            [category]="category"
-            (click)="onCategorySelected(category)"
-          ></category-item>
-        } @empty {
-          <div class="p-4 text-center opacity-50">No entries found.</div>
-        }
-      </ion-list>
-    </ion-content>
+    <ion-list lines="full">
+      @for (category of filteredCategories(); track $index) {
+        <category-item
+          [showParent]="true"
+          [category]="category"
+          (click)="onCategorySelected(category)"
+        ></category-item>
+      } @empty {
+        <div class="p-4 text-center opacity-50">No entries found.</div>
+      }
+    </ion-list>
   `,
 })
 export class CategoriesSearchResult {

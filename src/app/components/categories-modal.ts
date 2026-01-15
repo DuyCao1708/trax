@@ -16,8 +16,9 @@ import { Categories } from './categories';
 import { CategoriesSearchResult } from './categories-search-result';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Autofocus } from '../directives/autofocus';
-import { Router } from '@angular/router';
-import { CategoryDetail } from './category-detail';
+import { SubCategories } from './sub-categories';
+import { CategoryForm } from './category-form';
+import { CategoriesSettings } from './categories-settings';
 
 @Component({
   selector: 'categories-modal',
@@ -43,18 +44,6 @@ import { CategoryDetail } from './category-detail';
           </ion-button>
         </ion-buttons>
 
-        <ion-buttons slot="end">
-          @if (!isSearching()) {
-            <ion-button (click)="openSearchResult()">
-              <ion-icon slot="icon-only" name="search-sharp"></ion-icon>
-            </ion-button>
-          }
-
-          <ion-button (click)="openSettings()">
-            <ion-icon slot="icon-only" name="settings-sharp"></ion-icon>
-          </ion-button>
-        </ion-buttons>
-
         @if (isSearching()) {
           <ion-input
             [formControl]="searchControl"
@@ -75,21 +64,29 @@ import { CategoryDetail } from './category-detail';
         } @else {
           <ion-title>Category</ion-title>
         }
+
+        <ion-buttons slot="end">
+          @if (!isSearching()) {
+            <ion-button (click)="openSearchResult()">
+              <ion-icon slot="icon-only" name="search-sharp"></ion-icon>
+            </ion-button>
+          }
+
+          <ion-button (click)="openSettings()">
+            <ion-icon slot="icon-only" name="settings-sharp"></ion-icon>
+          </ion-button>
+        </ion-buttons>
       </ion-toolbar>
     </ion-header>
 
     <ion-content>
       <ion-nav></ion-nav>
-
-      @if (isSearching()) {
-      } @else {}
     </ion-content>
   `,
 })
 export class CategoriesModal {
   private _modalCtrl = inject(ModalController);
   private _nav = viewChild.required(IonNav);
-  private _router = inject(Router);
 
   protected isSearching = signal<boolean>(false);
 
@@ -116,19 +113,27 @@ export class CategoriesModal {
 
   async openSettings() {
     const activeView = await this._nav().getActive();
-    let contextId = null;
+    let context = null;
 
-    if (activeView?.component === CategoryDetail) {
-      contextId = activeView.params?.['category']?.id;
+    if (activeView?.component === SubCategories) {
+      context = activeView.params?.['category'];
     }
 
-    if (contextId) {
-      this._router.navigate(['/category-form', contextId]);
+    let options;
+    if (context) {
+      options = {
+        component: CategoryForm,
+        componentProps: { category: context },
+      };
     } else {
-      this._router.navigate(['/categories-settings']);
+      options = {
+        component: CategoriesSettings,
+      };
     }
 
-    this.dismiss();
+    const modal = await this._modalCtrl.create(options);
+
+    await modal.present();
   }
 
   async handleBack() {
@@ -145,7 +150,7 @@ export class CategoriesModal {
     this.dismiss();
   }
 
-  async dismiss() {
-    await this._modalCtrl.dismiss();
+  dismiss() {
+    this._modalCtrl.dismiss();
   }
 }
