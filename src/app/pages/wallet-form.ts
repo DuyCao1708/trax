@@ -116,18 +116,6 @@ import { ActivatedRoute } from '@angular/router';
       </form>
     </ion-content>
   `,
-  styles: `
-    .custom-input {
-      margin-top: 8px;
-
-      --highlight-color-focused: var(--ion-color-primary);
-      --highlight-color-valid: var(--ion-color-primary);
-    }
-
-    .custom-input {
-      --background: transparent !important;
-    }
-  `,
 })
 export class WalletForm {
   private _navCtrl = inject(NavController);

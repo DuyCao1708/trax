@@ -5,7 +5,7 @@
 @import 'tailwindcss/theme';
 @import 'tailwindcss/utilities';
 
-@source inline("bg-{red,sky,amber,slate,purple,green,blue,teal,pink,yellow,gray}-{400,500}");
+@source inline("bg-{red,orange,amber,yellow,lime,green,emerald,teal,cyan,sky,blue,indigo,violet,purple,fuchsia,pink,rose,slate,gray,neutral}-{400,500}");
 
 ion-button {
   margin-top: 0;
@@ -21,4 +21,15 @@ ion-header {
 ion-list {
   padding-top: 0 !important;
   padding-bottom: 0 !important;
+}
+
+.custom-input {
+  margin-top: 8px;
+
+  --highlight-color-focused: var(--ion-color-primary);
+  --highlight-color-valid: var(--ion-color-primary);
+}
+
+.custom-input {
+  --background: transparent !important;
 }
