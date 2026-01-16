@@ -1,19 +1,18 @@
-import { computed, effect, inject, Injectable, linkedSignal, Signal, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { DatabaseService } from './database.service';
 import { WalletEntity } from '../entities/wallet';
 import { Entities, SyncStatus } from '../entities';
-import { SyncService } from './sync.service';
 import { v4 as uuid } from 'uuid';
 import { Wallet, WalletMapper } from '../models/wallet';
 import { AuthService } from './auth.service';
+import { SyncableEntityService } from './syncable-entity.service';
 
 @Injectable({
   providedIn: 'root',
 })
-export class WalletService {
+export class WalletService extends SyncableEntityService<WalletEntity> {
   private _databaseService = inject(DatabaseService);
   private _authService = inject(AuthService);
-  private _syncService = inject(SyncService);
 
   private _entities = signal<WalletEntity[]>([]);
 
@@ -24,6 +23,8 @@ export class WalletService {
   }
 
   constructor() {
+    super(Entities.Wallets);
+
     effect(() => {
       const user = this._authService.currentUser();
 
@@ -69,7 +70,7 @@ export class WalletService {
 
     this._entities.update((current) => [...current, newWallet]);
 
-    this._syncService.syncTableOnly(Entities.Wallets, userId);
+    this.sync(userId);
 
     return newWallet;
   }
@@ -101,7 +102,7 @@ export class WalletService {
       current.map((wallet) => (wallet.id === id ? { ...wallet, ...data } : wallet)),
     );
 
-    this._syncService.syncTableOnly(Entities.Wallets, userId);
+    this.sync(userId);
   }
 
   async reorderWallets(newOrder: Wallet[], userId: string) {
@@ -126,7 +127,7 @@ export class WalletService {
     }));
     await this._databaseService.executeSet(statements);
 
-    this._syncService.syncTableOnly(Entities.Wallets, userId);
+    this.sync(userId);
   }
 
   async delete(id: string, userId: string) {
@@ -137,6 +138,6 @@ export class WalletService {
 
     this._entities.update((current) => current.filter((wallet) => wallet.id !== id));
 
-    this._syncService.syncTableOnly(Entities.Wallets, userId);
+    this.sync(userId);
   }
 }

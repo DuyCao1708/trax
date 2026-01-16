@@ -14,6 +14,7 @@ export enum SyncStatus {
 }
 
 export interface SyncableEntity {
+  id: string;
   user_id: string;
   updated_at: number;
   is_deleted: BooleanNumber;

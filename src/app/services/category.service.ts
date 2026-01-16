@@ -2,19 +2,18 @@ import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { Category, CategoryMapper } from '../models/category';
 import { DatabaseService } from './database.service';
 import { AuthService } from './auth.service';
-import { SyncService } from './sync.service';
 import { CategoryEntity } from '../entities/category';
 import { BooleanNumber, Entities, SyncStatus } from '../entities';
 import { OPERATION_KEYS } from '../constants';
 import { Preferences } from '@capacitor/preferences';
+import { SyncableEntityService } from './syncable-entity.service';
 
 @Injectable({
   providedIn: 'root',
 })
-export class CategoryService {
+export class CategoryService extends SyncableEntityService<CategoryEntity> {
   private _databaseService = inject(DatabaseService);
   private _authService = inject(AuthService);
-  private _syncService = inject(SyncService);
 
   private _entities = signal<CategoryEntity[]>([]);
 
@@ -27,7 +26,6 @@ export class CategoryService {
     allModels.forEach((cat) => {
       if (cat.parentId) {
         const parent = categoryMap.get(cat.parentId);
-        console.log(parent);
         if (parent) {
           cat.parentCategory = parent;
 
@@ -47,6 +45,8 @@ export class CategoryService {
   );
 
   constructor() {
+    super(Entities.Categories);
+
     effect(() => {
       const user = this._authService.currentUser();
 
@@ -92,7 +92,7 @@ export class CategoryService {
       current.map((category) => (category.id === id ? { ...category, ...updatedData } : category)),
     );
 
-    this._syncService.syncTableOnly(Entities.Categories, userId);
+    this.sync(userId);
   }
 
   async delete(id: string, userId: string) {
@@ -116,7 +116,7 @@ export class CategoryService {
 
     this._entities.update((current) => current.filter((wallet) => wallet.id !== id));
 
-    this._syncService.syncTableOnly(Entities.Wallets, userId);
+    this.sync(userId);
   }
 
   async addToFrequent(id: string, userId: string) {

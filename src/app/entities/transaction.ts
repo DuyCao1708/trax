@@ -1,7 +1,6 @@
 import { SyncableEntity } from '.';
 
 export interface TransactionEntity extends SyncableEntity {
-  id: string;
   type: TransactionType;
   amount: number;
   date: Date;

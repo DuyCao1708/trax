@@ -23,12 +23,12 @@ export class DatabaseService {
     this._database = await this._sqliteService.openDatabase(DATABASE_NAME, lastVersion);
   }
 
-  async query(sql: string, params: any[] = []) {
-    return await this._database.query(sql, params);
+  async query(statement: string, values?: any[]) {
+    return await this._database.query(statement, values);
   }
 
-  async execute(sql: string, params: any[] = []) {
-    const res = await this._database.run(sql, params);
+  async execute(statement: string, values?: any[]) {
+    const res = await this._database.run(statement, values);
 
     if (this._sqliteService.platform === 'web') {
       await this._sqliteService.sqliteConnection.saveToStore(DATABASE_NAME);
@@ -37,7 +37,7 @@ export class DatabaseService {
     return res;
   }
 
-  async executeSet(set: { statement: string; values: any[] }[]) {
+  async executeSet(set: { statement: string; values?: any[] }[]) {
     const res = await this._database.executeSet(set);
 
     if (this._sqliteService.platform === 'web') {
