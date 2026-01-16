@@ -16,7 +16,7 @@ import { CategoryItem } from './category-item';
     <h6 class="font-medium opacity-50 text-sm m-3">ALL CATEGORIES</h6>
 
     <ion-list lines="full">
-      @for (subCategory of category.subCategories || []; track $index) {
+      @for (subCategory of subCategories || []; track $index) {
         <category-item
           [category]="subCategory"
           (click)="onCategorySelected(subCategory)"
@@ -33,4 +33,8 @@ export class SubCategories {
 
   category: Category = this._navParams.get('category');
   onCategorySelected = this._navParams.get('onCategorySelected');
+
+  protected get subCategories() {
+    return this.category.subCategories?.filter((cat) => !cat.isDeleted) || [];
+  }
 }

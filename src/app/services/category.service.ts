@@ -4,7 +4,7 @@ import { DatabaseService } from './database.service';
 import { AuthService } from './auth.service';
 import { SyncService } from './sync.service';
 import { CategoryEntity } from '../entities/category';
-import { Entities, SyncStatus } from '../entities';
+import { BooleanNumber, Entities, SyncStatus } from '../entities';
 import { OPERATION_KEYS } from '../constants';
 import { Preferences } from '@capacitor/preferences';
 
@@ -27,6 +27,7 @@ export class CategoryService {
     allModels.forEach((cat) => {
       if (cat.parentId) {
         const parent = categoryMap.get(cat.parentId);
+        console.log(parent);
         if (parent) {
           cat.parentCategory = parent;
 
@@ -55,7 +56,7 @@ export class CategoryService {
   }
 
   async loadAll(userId: string): Promise<CategoryEntity[]> {
-    const sql = `SELECT * FROM ${Entities.Categories} WHERE (user_id = ? OR user_id = 'system') AND is_deleted = 0`;
+    const sql = `SELECT * FROM ${Entities.Categories} WHERE (user_id = ? OR user_id = 'system')`;
     const result = await this._databaseService.query(sql, [userId]);
 
     const data = result.values || [];
@@ -64,7 +65,11 @@ export class CategoryService {
     return data;
   }
 
-  async update(id: string, data: { name: string; icon: string; color: string }, userId: string) {
+  async patch(
+    id: string,
+    data: Partial<{ name: string; icon: string; color: string; is_deleted: BooleanNumber }>,
+    userId: string,
+  ) {
     const category = this._entities().find((cat) => cat.id === id);
 
     if (!category) return;
@@ -72,22 +77,19 @@ export class CategoryService {
     const updatedAt = Date.now();
 
     const updatedData = {
-      ...category,
-      name: data.name,
-      icon: data.icon,
-      color: data.color,
+      ...data,
       user_id: userId,
       sync_status: SyncStatus.Pending,
       updated_at: updatedAt,
     };
 
     const keys = Object.keys(updatedData);
-    const sql = `INSERT OR REPLACE INTO ${Entities.Categories} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`;
+    const sql = `UPDATE ${Entities.Categories} SET ${keys.map((key) => `${key} = ?`).join(',')} WHERE id = ?`;
 
-    await this._databaseService.execute(sql, Object.values(updatedData));
+    await this._databaseService.execute(sql, [...Object.values(updatedData), id]);
 
     this._entities.update((current) =>
-      current.map((category) => (category.id === id ? { ...category, ...data } : category)),
+      current.map((category) => (category.id === id ? { ...category, ...updatedData } : category)),
     );
 
     this._syncService.syncTableOnly(Entities.Categories, userId);

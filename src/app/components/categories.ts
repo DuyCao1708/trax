@@ -43,7 +43,7 @@ export class Categories {
   protected searchControl = new FormControl<string>('', { nonNullable: true });
 
   protected categories = computed(() =>
-    this._categoryService.categories().filter((cat) => !cat.parentId),
+    this._categoryService.categories().filter((cat) => !cat.isDeleted && !cat.parentId),
   );
 
   protected frequentCategories = this._categoryService.frequentCategories;

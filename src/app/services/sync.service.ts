@@ -102,6 +102,14 @@ export class SyncService {
         const transformer = SYNC_TRANSFORMERS[tableName] || SYNC_TRANSFORMERS['default'];
 
         for (const fbDoc of querySnapshot.docs) {
+          // const localItem = await this.getLocalItem(tableName, id);
+
+          // if (localItem && localItem.sync_status === SyncStatus.Pending) {
+          //   // Nếu local đang chờ đẩy lên, hãy bỏ qua việc pull bản ghi này
+          //   // Hoặc thực hiện logic resolve conflict (thường là ưu tiên Local)
+          //   continue;
+          // }
+
           const remoteItem = fbDoc.data();
           const id = fbDoc.id;
 
@@ -141,8 +149,12 @@ export class SyncService {
 
     const placeholders = keys.map(() => '?').join(',');
     const columns = keys.join(',');
+    const updateClause = keys
+      .filter((key) => key !== 'id')
+      .map((key) => `${key} = excluded.${key}`)
+      .join(', ');
 
-    const sql = `INSERT OR REPLACE INTO ${tableName} (${columns}) VALUES (${placeholders})`;
+    const sql = `INSERT INTO ${tableName} (${columns}) VALUES (${placeholders}) ON CONFLICT(id) DO UPDATE SET ${updateClause}`;
     await this._databaseService.execute(sql, values);
   }
   //#endregion Private methods

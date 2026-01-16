@@ -21,8 +21,6 @@ import {
   IonListHeader,
   IonInput,
   IonNote,
-  IonSelectOption,
-  IonSelect,
   IonPopover,
 } from '@ionic/angular/standalone';
 import { CategoryService } from '../services/category.service';
@@ -32,6 +30,8 @@ import { Category } from '../models/category';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CategoryItem } from './category-item';
+import { DEFAULT_CATEGORIES } from '../migrations/default-categories';
+import { BooleanNumber } from '../entities';
 
 @Component({
   selector: 'category-form',
@@ -112,7 +112,12 @@ import { CategoryItem } from './category-item';
           </ion-item>
 
           <ion-item [style.--background]="'var(--ion-background-color)'">
-            <ion-toggle [formControl]="formGroup.controls.show" class="my-2">Show</ion-toggle>
+            <ion-toggle
+              [formControl]="formGroup.controls.show"
+              class="my-2"
+              (ionChange)="saveFor('is_deleted')"
+              >Show</ion-toggle
+            >
           </ion-item>
 
           @if (category.subCategories?.length) {
@@ -172,7 +177,7 @@ import { CategoryItem } from './category-item';
 
                   <div class="flex gap-2">
                     <ion-button fill="clear" (click)="nameModal.dismiss()">Cancel</ion-button>
-                    <ion-button fill="clear">Confirm</ion-button>
+                    <ion-button fill="clear" (click)="saveFor('name')">Confirm</ion-button>
                   </div>
                 </div>
               </ion-item>
@@ -261,7 +266,7 @@ import { CategoryItem } from './category-item';
 
                   <div class="flex gap-2">
                     <ion-button fill="clear" (click)="iconModal.dismiss()">Cancel</ion-button>
-                    <ion-button fill="clear">Confirm</ion-button>
+                    <ion-button fill="clear" (click)="saveFor('icon')">Confirm</ion-button>
                   </div>
                 </div>
               </ion-item>
@@ -411,10 +416,6 @@ export class CategoryForm {
     'calculator',
   ];
 
-  get isEditing() {
-    return !!this.category;
-  }
-
   constructor() {
     this.setFormValue(this.category);
   }
@@ -436,14 +437,68 @@ export class CategoryForm {
     await this._nameModal().present();
   }
 
-  selectIcon(icon: string) {
-    this.formGroup.patchValue({ icon });
+  async saveFor(field: 'name' | 'icon' | 'is_deleted') {
+    const {
+      name: nameControl,
+      icon: iconControl,
+      color: colorControl,
+      show: showControl,
+    } = this.formGroup.controls;
+
+    let data;
+    if (field === 'name') {
+      if (nameControl.invalid) return nameControl.markAsTouched();
+
+      data = { name: nameControl.value };
+    } else if (field === 'icon') {
+      if (iconControl.invalid || colorControl.invalid)
+        return this.showToast('Please select icon & color');
+
+      data = { color: this.extractColorName(colorControl.value), icon: iconControl.value };
+    } else {
+      data = { is_deleted: (showControl.value ? 0 : 1) as BooleanNumber };
+    }
+
+    this.status.set('loading');
+
+    try {
+      const user = this._authService.currentUser();
+      if (!user) throw new Error('User not found');
+
+      await this._categoryService.patch(this.category.id, data, user.uid);
+
+      this.showToast('Category has been updated');
+
+      this.dismiss();
+    } catch (error) {
+      console.error('Error when saving wallet:', error);
+      this.status.set('idle');
+
+      this.showToast(`Failed to edit category. Please try again: ${error}`, 'danger');
+    } finally {
+      this.status.set('loaded');
+    }
+  }
+
+  async setToDefaultFor(field: 'name' | 'icon') {
+    const defaultCategory = DEFAULT_CATEGORIES.find((cat) => cat.id === this.category.id);
+
+    if (!defaultCategory) return;
+
+    if (field === 'name') {
+      this.formGroup.patchValue({ name: defaultCategory.name });
+    } else {
+      this.formGroup.patchValue({ icon: defaultCategory.icon, color: defaultCategory.color });
+    }
+
+    await this.saveFor(field);
   }
 
   dismiss() {
     this._modalCtrl.dismiss();
   }
 
+  //#region Private methods
   private setFormValue(category: Category) {
     this.formGroup.setValue({
       name: category.name,
@@ -452,4 +507,24 @@ export class CategoryForm {
       show: !category.isDeleted,
     });
   }
+
+  private async showToast(message: string, color: 'success' | 'danger' = 'success') {
+    const toast = await this._toastCtrl.create({
+      message: message,
+      duration: 2000,
+      color: color,
+      position: 'bottom',
+    });
+    await toast.present();
+  }
+
+  private extractColorName(value: string): string {
+    if (!value) return 'neutral';
+
+    const regex = /var\(--color-([a-z0-9-]+)-\d+\)/;
+    const match = value.match(regex);
+
+    return match ? match[1] : value;
+  }
+  //#endregion
 }
