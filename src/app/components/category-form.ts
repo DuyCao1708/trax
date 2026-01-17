@@ -1,4 +1,4 @@
-import { Component, inject, signal, viewChild } from '@angular/core';
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import {
   IonHeader,
   IonToolbar,
@@ -26,12 +26,14 @@ import {
 import { CategoryService } from '../services/category.service';
 import { AuthService } from '../services/auth.service';
 import { LoadingStatus } from '../models/loading-status';
-import { Category } from '../models/category';
+import { Category, CategoryMapper } from '../models/category';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CategoryItem } from './category-item';
 import { DEFAULT_CATEGORIES } from '../migrations/default-categories';
 import { BooleanNumber } from '../entities';
+import { SubCategoryForm } from './sub-category-form';
+import { CATEGORY_COLORS, CATEGORY_ICONS } from '../constants';
 
 @Component({
   selector: 'category-form',
@@ -68,7 +70,7 @@ import { BooleanNumber } from '../entities';
           </ion-button>
         </ion-buttons>
 
-        <ion-title>{{ category.name }}</ion-title>
+        <ion-title>{{ category().name }}</ion-title>
       </ion-toolbar>
 
       @if (status() === 'loading') {
@@ -120,7 +122,7 @@ import { BooleanNumber } from '../entities';
             >
           </ion-item>
 
-          @if (category.subCategories?.length) {
+          @if (category().subCategories?.length) {
             <ion-item
               class="font-medium opacity-50 text-sm"
               [style.--background]="'var(--ion-background-color)'"
@@ -129,10 +131,10 @@ import { BooleanNumber } from '../entities';
               SUBCATEGORIES
             </ion-item>
 
-            @for (category of category.subCategories; track $index) {
+            @for (category of category().subCategories; track $index) {
               <category-item
                 [category]="category"
-                (click)="openSubcategoryForm(category)"
+                (click)="editSubCategory(category)"
               ></category-item>
             }
           }
@@ -275,9 +277,13 @@ import { BooleanNumber } from '../entities';
         </ng-template>
       </ion-modal>
 
-      @if (category.subCategories?.length) {
+      @if (category().subCategories?.length) {
         <ion-fab vertical="bottom" horizontal="end" slot="fixed">
-          <ion-fab-button [style.--border-radius]="'12px'" [style.--color]="'var(--color-white)'">
+          <ion-fab-button
+            [style.--border-radius]="'12px'"
+            [style.--color]="'var(--color-white)'"
+            (click)="openSubCategoryForm()"
+          >
             <ion-icon name="add"></ion-icon>
           </ion-fab-button>
         </ion-fab>
@@ -307,123 +313,39 @@ export class CategoryForm {
 
   protected status = signal<LoadingStatus>('idle');
 
-  readonly category: Category = this._navParams.get('category');
+  protected readonly categoryId: string = this._navParams.get('categoryId');
 
-  readonly colors = [
-    'red',
-    'orange',
-    'amber',
-    'yellow',
-    'lime',
-    'green',
-    'emerald',
-    'teal',
-    'cyan',
-    'sky',
-    'blue',
-    'indigo',
-    'violet',
-    'purple',
-    'fuchsia',
-    'pink',
-    'rose',
-    'slate',
-    'gray',
-    'neutral',
-  ];
+  protected readonly category = computed(
+    () => this._categoryService.categories().find((cat) => cat.id === this.categoryId)!,
+  );
 
-  protected icons = [
-    // Nhóm 1: Food, Drinks & Shopping (Dữ liệu của bạn)
-    'restaurant',
-    'wine',
-    'nutrition',
-    'fast-food',
-    'bag-handle',
-    'shirt',
-    'medical',
-    'laptop',
-    'happy',
-    'gift',
-    'beaker',
-    'home',
-    'diamond',
-    'cart',
-    'paw',
-    'construct',
+  protected readonly colors = CATEGORY_COLORS;
 
-    // Nhóm 2: Housing & Transport (Dữ liệu của bạn)
-    'bulb',
-    'hammer',
-    'cash',
-    'business',
-    'key',
-    'settings',
-    'bus',
-    'briefcase',
-    'airplane',
-    'train',
-    'car',
-    'car-sport',
-    'speedometer',
-    'square',
-    'person',
-    'barbell',
-
-    // Nhóm 3: Life & Communication (Dữ liệu của bạn)
-    'library',
-    'ticket',
-    'school',
-    'heart',
-    'umbrella',
-    'calendar',
-    'dice',
-    'tv',
-    'flower',
-    'wifi',
-    'call',
-    'mail',
-    'download',
-    'people',
-    'swap-vertical',
-    'document-text',
-
-    // Nhóm 4: Financial & Investment (Dữ liệu của bạn)
-    'shield-checkmark',
-    'wallet',
-    'receipt',
-    'stats-chart',
-    'apps',
-    'trending-up',
-    'save',
-    'create',
-    'checkmark-circle',
-    'podium',
-    'arrow-down-circle',
-    'refresh',
-
-    // Nhóm 5: Bổ sung để tròn mảng & Đa dạng (Chia hết cho 4)
-    'share',
-    'menu',
-    'notifications',
-    'camera',
-    'game-controller',
-    'leaf',
-    'trophy',
-    'water',
-    'flashlight',
-    'alarm',
-    'medkit',
-    'calculator',
-  ];
+  protected readonly icons = CATEGORY_ICONS;
 
   constructor() {
-    this.setFormValue(this.category);
+    this.setFormValue(this.category());
   }
 
-  async openSubcategoryForm(category: Category) {
+  async editSubCategory(category: Category) {
     const modal = await this._modalCtrl.create({
       component: CategoryForm,
       componentProps: { category: category },
+    });
+
+    await modal.present();
+  }
+
+  async openSubCategoryForm() {
+    const modal = await this._modalCtrl.create({
+      component: SubCategoryForm,
+      componentProps: {
+        defaultFormValue: {
+          color: this.formGroupValue().color,
+          icon: this.formGroupValue().icon,
+          parent_id: this.category().id,
+        },
+      },
     });
 
     await modal.present();
@@ -465,7 +387,7 @@ export class CategoryForm {
       const user = this._authService.currentUser();
       if (!user) throw new Error('User not found');
 
-      await this._categoryService.patch(this.category.id, data, user.uid);
+      await this._categoryService.patch(this.category().id, data, user.uid);
 
       this.showToast('Category has been updated');
 
@@ -481,7 +403,7 @@ export class CategoryForm {
   }
 
   async setToDefaultFor(field: 'name' | 'icon') {
-    const defaultCategory = DEFAULT_CATEGORIES.find((cat) => cat.id === this.category.id);
+    const defaultCategory = DEFAULT_CATEGORIES.find((cat) => cat.id === this.category().id);
 
     if (!defaultCategory) return;
 

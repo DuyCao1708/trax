@@ -64,7 +64,7 @@ export class CategoriesSettings {
   async openCategoryForm(category: Category) {
     const modal = await this._modalCtrl.create({
       component: CategoryForm,
-      componentProps: { category },
+      componentProps: { categoryId: category.id },
     });
 
     await modal.present();

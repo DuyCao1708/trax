@@ -74,7 +74,7 @@ import { ActivatedRoute } from '@angular/router';
               class="custom-input"
               formControlName="name"
               label="Wallet name"
-              label-placement="stacked"
+              label-placement="floating"
               type="text"
               placeholder="Cash, BIDV, OCB..."
               helperText="Should be your short bank name"
@@ -92,7 +92,7 @@ import { ActivatedRoute } from '@angular/router';
               class="custom-input"
               formControlName="balance"
               label="Initial value"
-              label-placement="stacked"
+              label-placement="floating"
               fill="solid"
               type="number"
               inputmode="decimal"
@@ -107,7 +107,7 @@ import { ActivatedRoute } from '@angular/router';
               formControlName="currency"
               fill="solid"
               label="Currency"
-              label-placement="stacked"
+              label-placement="floating"
               type="text"
             >
             </ion-input>

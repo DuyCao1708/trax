@@ -7,6 +7,7 @@ import { OPERATION_KEYS } from '../constants';
 import { Preferences } from '@capacitor/preferences';
 import { SyncableEntityService } from './syncable-entity.service';
 import { SyncService } from './sync.service';
+import { v4 as uuid } from 'uuid';
 
 @Injectable({
   providedIn: 'root',
@@ -87,6 +88,32 @@ export class CategoryService extends SyncableEntityService<CategoryEntity> {
     );
 
     this.sync(userId);
+  }
+
+  async createSubCategory(
+    data: { name: string; icon: string; color: string; parent_id: string },
+    userId: string,
+  ) {
+    const newCategory: CategoryEntity = {
+      id: uuid(),
+      ...data,
+      user_id: userId,
+      updated_at: Date.now(),
+      is_deleted: 0,
+      sync_status: SyncStatus.Pending,
+    };
+
+    const keys = Object.keys(newCategory);
+    const values = keys.map((key) => (newCategory as any)[key]);
+    const sql = `INSERT INTO ${Entities.Categories} (${keys.join(', ')}) VALUES (${keys.map(() => '?').join(', ')})`;
+
+    await this._databaseService.execute(sql, values);
+
+    this.entities.update((current) => [...current, newCategory]);
+
+    this.sync(userId);
+
+    return newCategory;
   }
 
   async delete(id: string, userId: string) {

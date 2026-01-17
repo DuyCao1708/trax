@@ -123,7 +123,7 @@ export class CategoriesModal {
     if (context) {
       options = {
         component: CategoryForm,
-        componentProps: { category: context },
+        componentProps: { categoryId: context.id },
       };
     } else {
       options = {
