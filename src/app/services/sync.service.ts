@@ -47,6 +47,8 @@ export class SyncService {
         if (status.connected) {
           await this.syncAll(user.uid);
         }
+
+        this.setAllVersions(1);
       } else {
         const { value: cachedUser } = await Preferences.get({ key: OPERATION_KEYS.CACHED_USER });
 
