@@ -15,6 +15,8 @@ import { CategoryService } from './category.service';
 import { SyncResult } from '../models';
 import { AuthService } from './auth.service';
 import { Network } from '@capacitor/network';
+import { Preferences } from '@capacitor/preferences';
+import { OPERATION_KEYS } from '../constants';
 
 @Injectable({
   providedIn: 'root',
@@ -44,11 +46,13 @@ export class SyncService {
 
         if (status.connected) {
           await this.syncAll(user.uid);
-        } else {
-          this.setAllVersions(1);
         }
       } else {
-        this.setAllVersions(0);
+        const { value: cachedUser } = await Preferences.get({ key: OPERATION_KEYS.CACHED_USER });
+
+        if (!cachedUser) {
+          this.setAllVersions(0);
+        }
       }
     });
   }

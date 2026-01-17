@@ -30,6 +30,8 @@ export class AuthService {
 
   currentUser = signal<User | null>(null);
 
+  private _isListenerSetup = false;
+
   async initializeAuth() {
     const { value: cachedUser } = await Preferences.get({ key: OPERATION_KEYS.CACHED_USER });
 
@@ -42,7 +44,9 @@ export class AuthService {
       const isVerified = await this.verifyBiometric();
 
       if (!isVerified) {
-        await this.logout();
+        this._router.navigate(['/locked'], {
+          queryParams: { redirectUrl: this._router.url },
+        });
         return;
       }
     }
@@ -50,13 +54,7 @@ export class AuthService {
     const user = JSON.parse(cachedUser);
     this.currentUser.set(user);
 
-    onAuthStateChanged(this._auth, (fbUser) => {
-      if (fbUser) {
-        this.updateUserCache(fbUser);
-      } else if (this.currentUser()) {
-        this.logout();
-      }
-    });
+    this.setupAuthListener();
   }
 
   async loginWithGoogle() {
@@ -109,8 +107,8 @@ export class AuthService {
     if (!result.isAvailable) return true;
 
     return await NativeBiometric.verifyIdentity({
-      title: 'Xác thực đó là bạn',
-      description: 'Vui lòng quét vân tay để tiếp tục.',
+      title: 'Identity Verification',
+      description: 'Please scan your fingerprint or face to continue.',
     })
       .then(() => true)
       .catch(() => false);
@@ -153,12 +151,12 @@ export class AuthService {
     if (!res.isAvailable) return;
 
     const alert = await this._alert.create({
-      header: 'Bảo mật vân tay',
-      message: 'Bạn có muốn dùng vân tay để mở khóa nhanh lần sau không?',
+      header: 'Enable Biometrics',
+      message: 'Would you like to use biometrics for faster login next time?',
       buttons: [
-        { text: 'Để sau', role: 'cancel' },
+        { text: 'Maybe Later', role: 'cancel' },
         {
-          text: 'Đồng ý',
+          text: 'Enable',
           handler: () => this.toggleBiometric(true),
         },
       ],
@@ -177,6 +175,20 @@ export class AuthService {
         await Preferences.remove({ key });
       }
     }
+  }
+
+  private setupAuthListener() {
+    if (this._isListenerSetup) return;
+
+    onAuthStateChanged(this._auth, (fbUser) => {
+      if (fbUser) {
+        this.updateUserCache(fbUser);
+      } else if (this.currentUser()) {
+        this.logout();
+      }
+    });
+
+    this._isListenerSetup = true;
   }
   //#endregion Private methods
 }
