@@ -55,7 +55,7 @@ export class Categories {
   handleSelection(category: Category) {
     if (category.subCategories?.length && this._nav) {
       this._nav.push(SubCategories, {
-        category,
+        categoryId: category.id,
         onCategorySelected: this.onCategorySelected,
       });
     } else {
