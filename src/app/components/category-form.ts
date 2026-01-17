@@ -390,8 +390,6 @@ export class CategoryForm {
       await this._categoryService.patch(this.category().id, data, user.uid);
 
       this.showToast('Category has been updated');
-
-      this.dismiss();
     } catch (error) {
       console.error('Error when saving wallet:', error);
       this.status.set('idle');
