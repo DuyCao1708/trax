@@ -1,24 +1,25 @@
-import { computed, effect, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { Category, CategoryMapper } from '../models/category';
 import { DatabaseService } from './database.service';
-import { AuthService } from './auth.service';
 import { CategoryEntity } from '../entities/category';
 import { BooleanNumber, Entities, SyncStatus } from '../entities';
 import { OPERATION_KEYS } from '../constants';
 import { Preferences } from '@capacitor/preferences';
 import { SyncableEntityService } from './syncable-entity.service';
+import { SyncService } from './sync.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class CategoryService extends SyncableEntityService<CategoryEntity> {
   private _databaseService = inject(DatabaseService);
-  private _authService = inject(AuthService);
 
-  private _entities = signal<CategoryEntity[]>([]);
+  protected version = inject(SyncService).getEntityVersion(Entities.Categories);
+
+  protected entities = signal<CategoryEntity[]>([]);
 
   readonly categories = computed(() => {
-    const allModels = this._entities().map(CategoryMapper.toModel);
+    const allModels = this.entities().map(CategoryMapper.toModel);
 
     const categoryMap = new Map<string, Category>();
     allModels.forEach((cat) => categoryMap.set(cat.id, cat));
@@ -46,13 +47,6 @@ export class CategoryService extends SyncableEntityService<CategoryEntity> {
 
   constructor() {
     super(Entities.Categories);
-
-    effect(() => {
-      const user = this._authService.currentUser();
-
-      if (user) this.loadAll(user.uid);
-      else this._entities.set([]);
-    });
   }
 
   async loadAll(userId: string): Promise<CategoryEntity[]> {
@@ -60,7 +54,7 @@ export class CategoryService extends SyncableEntityService<CategoryEntity> {
     const result = await this._databaseService.query(sql, [userId]);
 
     const data = result.values || [];
-    this._entities.set(data);
+    this.entities.set(data);
 
     return data;
   }
@@ -70,7 +64,7 @@ export class CategoryService extends SyncableEntityService<CategoryEntity> {
     data: Partial<{ name: string; icon: string; color: string; is_deleted: BooleanNumber }>,
     userId: string,
   ) {
-    const category = this._entities().find((cat) => cat.id === id);
+    const category = this.entities().find((cat) => cat.id === id);
 
     if (!category) return;
 
@@ -88,7 +82,7 @@ export class CategoryService extends SyncableEntityService<CategoryEntity> {
 
     await this._databaseService.execute(sql, [...Object.values(updatedData), id]);
 
-    this._entities.update((current) =>
+    this.entities.update((current) =>
       current.map((category) => (category.id === id ? { ...category, ...updatedData } : category)),
     );
 
@@ -114,7 +108,7 @@ export class CategoryService extends SyncableEntityService<CategoryEntity> {
 
     await this._databaseService.execute(sql, Object.values(deletedItem));
 
-    this._entities.update((current) => current.filter((wallet) => wallet.id !== id));
+    this.entities.update((current) => current.filter((wallet) => wallet.id !== id));
 
     this.sync(userId);
   }

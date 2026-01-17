@@ -17,7 +17,13 @@ export class InitializeAppService {
   async initializeApp() {
     try {
       await this.initializeDatabase();
-      await this.initializeAuth();
+      await this._authService.initializeAuth();
+
+      const status = await Network.getStatus();
+
+      if (status.connected) {
+        await this.triggerSync();
+      }
 
       this.listenOnNetworkChanges();
     } catch (error) {
@@ -44,16 +50,6 @@ export class InitializeAppService {
       await this._databaseService.initializeDatabase();
     } catch (error) {
       console.error('Database init error:', error);
-    }
-  }
-
-  private async initializeAuth() {
-    await this._authService.initializeAuth();
-
-    const status = await Network.getStatus();
-
-    if (status.connected) {
-      await this.triggerSync();
     }
   }
 

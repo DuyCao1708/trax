@@ -16,7 +16,6 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { AppUser } from '../entities/app-user';
 import { Entities } from '../entities';
 import { Router } from '@angular/router';
-import { SyncService } from './sync.service';
 import { DatabaseService } from './database.service';
 
 @Injectable({
@@ -26,7 +25,6 @@ export class AuthService {
   private _auth = inject(FirebaseService).auth;
   private _firestore = inject(FirebaseService).database;
   private _databaseService = inject(DatabaseService);
-  private _syncService = inject(SyncService);
   private _alert = inject(AlertController);
   private _router = inject(Router);
 
@@ -39,9 +37,6 @@ export class AuthService {
       return;
     }
 
-    const user = JSON.parse(cachedUser);
-    this.currentUser.set(user);
-
     const { value: isBioEnabled } = await Preferences.get({ key: OPERATION_KEYS.USE_BIOMETRIC });
     if (isBioEnabled == '1') {
       const isVerified = await this.verifyBiometric();
@@ -51,6 +46,9 @@ export class AuthService {
         return;
       }
     }
+
+    const user = JSON.parse(cachedUser);
+    this.currentUser.set(user);
 
     onAuthStateChanged(this._auth, (fbUser) => {
       if (fbUser) {
@@ -68,8 +66,6 @@ export class AuthService {
       const credential = GoogleAuthProvider.credential(idToken);
       const userCredential = await signInWithCredential(this._auth, credential);
       await this.updateUserCache(userCredential.user);
-
-      await this._syncService.syncAll(userCredential.user.uid);
 
       this.currentUser.set(userCredential.user);
 

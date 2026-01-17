@@ -1,11 +1,12 @@
-import { inject, Injectable } from '@angular/core';
+import { effect, inject, Injectable, Signal, untracked, WritableSignal } from '@angular/core';
 import { Entities, SyncableEntity, SyncStatus } from '../entities';
 import { DatabaseService } from './database.service';
-import { SyncService } from './sync.service';
 import { OPERATION_KEYS } from '../constants';
 import { Preferences } from '@capacitor/preferences';
 import { collection, doc, getDocs, orderBy, query, where, writeBatch } from 'firebase/firestore';
 import { FirebaseService } from './firebase.service';
+import { AuthService } from './auth.service';
+import { SyncResult } from '../models';
 
 @Injectable({
   providedIn: 'root',
@@ -14,9 +15,27 @@ export abstract class SyncableEntityService<T extends SyncableEntity> {
   protected databaseService = inject(DatabaseService);
   protected firestore = inject(FirebaseService).database;
 
-  constructor(protected tableName: Entities) {}
+  protected abstract entities: WritableSignal<T[]>;
+  protected abstract version: Signal<number>;
 
-  async pull(userId: string): Promise<void> {
+  constructor(protected tableName: Entities) {
+    const authService = inject(AuthService);
+
+    effect(() => {
+      const user = authService.currentUser();
+      const version = this.version();
+
+      if (user && version > 0)
+        untracked(() => {
+          this.loadAll(user.uid);
+        });
+      else if (!user) this.entities.set([]);
+    });
+  }
+
+  abstract loadAll(userId: string): Promise<T[]>;
+
+  async pull(userId: string): Promise<SyncResult> {
     try {
       const lastSyncTs = await this.getLastSyncTimestamp(userId);
 
@@ -25,7 +44,7 @@ export abstract class SyncableEntityService<T extends SyncableEntity> {
 
       const querySnapshot = await getDocs(q);
 
-      if (querySnapshot.empty) return;
+      if (querySnapshot.empty) return SyncResult.NothingChanged;
 
       const items = querySnapshot.docs.map((doc) => ({
         ...(doc.data() as T),
@@ -37,8 +56,11 @@ export abstract class SyncableEntityService<T extends SyncableEntity> {
 
       const latestSyncTs = items[items.length - 1].updated_at;
       await this.setLastTimestamp(latestSyncTs, userId);
+
+      return SyncResult.HasChanged;
     } catch (error) {
       console.error(`Pull failed: ${this.tableName}`, error);
+      return SyncResult.NothingChanged;
     }
   }
 
@@ -80,9 +102,11 @@ export abstract class SyncableEntityService<T extends SyncableEntity> {
     }
   }
 
-  async sync(userId: string) {
-    await this.pull(userId);
+  async sync(userId: string): Promise<SyncResult> {
+    const pullResult = await this.pull(userId);
     await this.push(userId);
+
+    return pullResult;
   }
 
   //#region Private methods
@@ -116,7 +140,7 @@ export abstract class SyncableEntityService<T extends SyncableEntity> {
     const updateClause = keys
       .filter((key) => key != 'id')
       .map((key) => `${key} = EXCLUDED.${key}`)
-      .join(',');
+      .join(', ');
 
     const sql = `
     INSERT INTO ${this.tableName} (${columns}) 
