@@ -11,7 +11,10 @@ import { CategoryService } from '../services/category.service';
     <h6 class="font-medium opacity-50 text-sm m-3">GENERAL</h6>
 
     <ion-list lines="none">
-      <category-item [category]="category()" (click)="onCategorySelected(category)"></category-item>
+      <category-item
+        [category]="category()"
+        (click)="onCategorySelected(category())"
+      ></category-item>
     </ion-list>
 
     <h6 class="font-medium opacity-50 text-sm m-3">ALL CATEGORIES</h6>
