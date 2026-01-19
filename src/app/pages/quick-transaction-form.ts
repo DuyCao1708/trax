@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import {
   IonHeader,
   IonToolbar,
@@ -100,7 +100,7 @@ import { AuthService } from '../services/auth.service';
             <span
               class="text-end font-light"
               [style.font-size]="
-                'clamp(16px, calc((100vw - 150px) / ' +
+                'clamp(16px, calc((100vw - 200px) / ' +
                 (displayAmount().length || 1) * 0.6 +
                 '), 80px)'
               "
@@ -247,8 +247,16 @@ export class QuickTransactionForm {
   }
 
   setDisplayAmount(value: string) {
-    const roundedValue = Math.max(parseFloat(value), 0).toFixed(2);
-    this.displayAmount.set(roundedValue);
+    if (value.endsWith('.') || (value.includes('.') && value.endsWith('0'))) {
+      this.displayAmount.set(value);
+      return;
+    }
+
+    const num = Math.max(parseFloat(value) || 0, 0);
+
+    const formattedValue = Number(num.toFixed(2)).toString();
+
+    this.displayAmount.set(formattedValue);
   }
 
   setAmount(value: number) {
@@ -258,19 +266,26 @@ export class QuickTransactionForm {
   async save() {
     if (this.formGroup.invalid) return this.toastIfInvalid();
 
-    console.log(this.formGroup.getRawValue());
-
     try {
       const user = this._authService.currentUser();
       if (!user) throw new Error('User not found');
 
       const formValue = this.formGroup.getRawValue();
 
+      const isTransfer = formValue.type === TransactionType.Transfer;
+      const data = {
+        ...formValue,
+        category_id: isTransfer ? undefined : formValue.category_id,
+        to_wallet_id: isTransfer ? formValue.to_wallet_id : undefined,
+      };
+
       this.status.set('loading');
 
-      await this._transactionService.create(formValue, user.uid);
+      await this._transactionService.create(data, user.uid);
 
-      this._categoryService.addToFrequent(formValue.category_id, user.uid);
+      if (data.category_id) {
+        this._categoryService.addToFrequent(data.category_id, user.uid);
+      }
 
       this.showToast('New transaction has been created');
 

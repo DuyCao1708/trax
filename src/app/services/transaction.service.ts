@@ -69,7 +69,7 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
     return newTransaction;
   }
 
-  override async afterPullChanged(userId: string, changes: TransactionEntity[]) {
+  override async afterSyncChanged(userId: string, changes: TransactionEntity[]) {
     if (!changes || changes.length === 0) return;
 
     const affectedWalletIds = [
@@ -77,12 +77,9 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
     ] as string[];
 
     if (affectedWalletIds.length > 0) {
-      await Promise.all(
-        affectedWalletIds.map((id) => this._walletService.reconcileBalance(id, userId)),
-      );
+      await this._walletService.reconcileMultiple(affectedWalletIds, userId);
+      this._walletService.push(userId);
     }
-
-    this._walletService.push(userId);
   }
 
   private async handleBalanceUpdate(transaction: TransactionEntity, userId: string) {

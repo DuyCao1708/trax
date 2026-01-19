@@ -101,17 +101,25 @@ export abstract class SyncableEntityService<T extends SyncableEntity> {
   }
 
   async sync(userId: string): Promise<SyncResult<T>> {
-    const result = await this.pull(userId);
-    await this.push(userId);
+    const pullResult = await this.pull(userId);
+    const pushResult = await this.push(userId);
 
-    if (result.hasChanged) {
-      await this.afterPullChanged(userId, result.changes);
+    const allChanges: T[] = [
+      ...(pullResult.hasChanged ? pullResult.changes : []),
+      ...(pushResult.hasChanged ? pushResult.changes : []),
+    ];
+
+    if (pullResult.hasChanged || pushResult.hasChanged) {
+      await this.afterSyncChanged(userId, allChanges);
     }
 
-    return result;
+    return {
+      hasChanged: pullResult.hasChanged || pushResult.hasChanged,
+      changes: allChanges,
+    };
   }
 
-  protected async afterPullChanged(userId: string, changes: T[]): Promise<void> {
+  protected async afterSyncChanged(userId: string, changes: T[]): Promise<void> {
     return Promise.resolve();
   }
 

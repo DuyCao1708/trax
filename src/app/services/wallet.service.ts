@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 import { Wallet, WalletMapper } from '../models/wallet';
 import { SyncableEntityService } from './syncable-entity.service';
 import { SyncService } from './sync.service';
+import { TransactionType } from '../entities/transaction';
 
 @Injectable({
   providedIn: 'root',
@@ -105,47 +106,45 @@ export class WalletService extends SyncableEntityService<WalletEntity> {
     );
   }
 
-  async reconcileBalance(walletId: string, userId: string) {
+  async reconcileMultiple(walletIds: string[], userId: string) {
+    const placeholders = walletIds.map(() => '?').join(',');
+    const now = Date.now();
+
     const sql = `
-    SELECT 
-      (SELECT initial_balance FROM ${this.tableName} WHERE id = ?) as baseAmount,
-      TOTAL(
-        CASE 
-          WHEN wallet_id = ? AND type = 0 THEN amount    
-          WHEN wallet_id = ? AND type = 1 THEN -amount   
-          WHEN wallet_id = ? AND type = 2 THEN -amount   
-          WHEN to_wallet_id = ? AND type = 2 THEN amount  
-          ELSE 0 
-        END
-      ) as transactionDelta
-    FROM ${Entities.Transactions}
-    WHERE (wallet_id = ? OR to_wallet_id = ?) 
-      AND is_deleted = 0 
-      AND user_id = ?
+    UPDATE ${this.tableName} 
+    SET 
+      balance = (
+        initial_balance + (
+          SELECT TOTAL(
+            CASE 
+              WHEN t.wallet_id = ${this.tableName}.id AND t.type = ${TransactionType.Income} THEN t.amount
+              WHEN t.wallet_id = ${this.tableName}.id AND t.type = ${TransactionType.Expense} THEN -t.amount
+              WHEN t.wallet_id = ${this.tableName}.id AND t.type = ${TransactionType.Transfer} THEN -t.amount
+              WHEN t.to_wallet_id = ${this.tableName}.id AND t.type = ${TransactionType.Transfer} THEN t.amount
+              ELSE 0 
+            END
+          )
+          FROM ${Entities.Transactions} AS t
+          WHERE (t.wallet_id = ${this.tableName}.id OR t.to_wallet_id = ${this.tableName}.id)
+            AND t.is_deleted = 0 
+            AND t.user_id = ? 
+        )
+      ),
+      updated_at = ?, 
+      sync_status = ? 
+    WHERE id IN (${placeholders})
+      AND user_id = ?              
   `;
 
-    const result = await this.databaseService.query(sql, [
-      walletId,
-      walletId,
-      walletId,
-      walletId,
-      walletId,
-      walletId,
-      walletId,
+    await this.databaseService.execute(sql, [
+      userId,
+      now,
+      SyncStatus.Pending,
+      ...walletIds,
       userId,
     ]);
 
-    const row = result.values?.[0];
-    const netBalance = (row?.baseAmount ?? 0) + (row?.transactionDelta ?? 0);
-
-    await this.databaseService.execute(
-      `UPDATE ${this.tableName} SET balance = ?, updated_at = ?, sync_status = ? WHERE id = ?`,
-      [netBalance, Date.now(), SyncStatus.Pending, walletId],
-    );
-
-    this.entities.update((list) =>
-      list.map((w) => (w.id === walletId ? { ...w, balance: netBalance } : w)),
-    );
+    await this.loadAll(userId);
   }
 
   async reorderWallets(newOrder: Wallet[], userId: string) {
