@@ -1,4 +1,4 @@
-import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import {
   IonHeader,
   IonToolbar,
@@ -13,10 +13,11 @@ import {
   IonLabel,
   ModalController,
   ToastController,
+  NavController,
 } from '@ionic/angular/standalone';
 import { LoadingStatus } from '../models/loading-status';
 import { TransactionType } from '../entities/transaction';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TransactionService } from '../services/transaction.service';
 import { ActivatedRoute } from '@angular/router';
 import { NumPad } from '../components/num-pad';
@@ -25,9 +26,8 @@ import { WalletService } from '../services/wallet.service';
 import { WalletsModal } from '../components/wallets-modal';
 import { DecimalPipe } from '@angular/common';
 import { CategoriesModal } from '../components/categories-modal';
-import { Wallet } from '../models/wallet';
-import { Category } from '../models/category';
 import { CategoryService } from '../services/category.service';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'quick-transaction-form',
@@ -94,7 +94,7 @@ import { CategoryService } from '../services/category.service';
         <div class="flex-1 flex flex-col bg-(--quick-transaction-form-color-secondary) text-white">
           <section class="flex-1 grid grid-cols-[auto_1fr_auto] items-center px-4">
             <span class="text-[32px] font-black pe-4">
-              {{ amountPrefix() }}
+              {{ view().prefix }}
             </span>
 
             <span
@@ -113,100 +113,114 @@ import { CategoryService } from '../services/category.service';
             </span>
 
             <span class="text-[32px] font-light ps-10">
-              {{ walletData()?.currency || '' }}
+              {{ view().wallet?.currency || '' }}
             </span>
           </section>
 
           <section
             class="grid grid-cols-2 *:text-center *:*:first:opacity-75 *:*:first:text-sm *:*:first:-mb-3! *:*:last:font-medium"
           >
-            <div (click)="openWalletSelectionModal()">
+            <div (click)="openWalletSelectionModalFor('wallet_id')">
               <p>Wallet</p>
-              <p class="uppercase">{{ walletData()?.name || '' }}</p>
+              <p class="uppercase">{{ view().wallet?.name || '' }}</p>
             </div>
 
-            <div (click)="openCategorySelectionModal()">
-              <p>Category</p>
-              <p class="uppercase text-nowrap truncate">{{ categoryData()?.name || '' }}</p>
-            </div>
+            @if (view().isTransfer) {
+              <div (click)="openWalletSelectionModalFor('to_wallet_id')">
+                <p>To wallet</p>
+                <p class="uppercase text-nowrap truncate">{{ view().toWallet?.name || '' }}</p>
+              </div>
+            } @else {
+              <div (click)="openCategorySelectionModal()">
+                <p>Category</p>
+                <p class="uppercase text-nowrap truncate">{{ view().category?.name }}</p>
+              </div>
+            }
           </section>
         </div>
 
         <num-pad
           (displayChange)="setDisplayAmount($event)"
-          (valueChange)="formGroup.controls.amount.setValue($event)"
+          (valueChange)="setAmount($event)"
         ></num-pad>
       </form>
     </ion-content>
   `,
   host: {
-    '[style.--quick-transaction-form-color-primary]': '"var(--color-" + walletColor() + "-500)"',
-    '[style.--quick-transaction-form-color-secondary]': '"var(--color-" + walletColor() + "-400)"',
+    '[style.--quick-transaction-form-color-primary]': '"var(--color-" + view().color + "-500)"',
+    '[style.--quick-transaction-form-color-secondary]': '"var(--color-" + view().color + "-400)"',
   },
 })
 export class QuickTransactionForm {
   private _transactionService = inject(TransactionService);
   private _walletService = inject(WalletService);
   private _categoryService = inject(CategoryService);
+  private _authService = inject(AuthService);
   private _modalCtrl = inject(ModalController);
   private _toastCtrl = inject(ToastController);
+  private _navCtrl = inject(NavController);
 
   protected readonly transactionTypes = this._transactionService.types;
 
   protected status = signal<LoadingStatus>('idle');
 
-  protected formGroup = new FormBuilder().nonNullable.group({
-    type: TransactionType.Expense,
-    amount: [0, [Validators.min(0.01)]],
-    categoryId: ['', [Validators.required]],
-    walletId: ['', [Validators.required]],
-  });
+  protected formGroup = new FormBuilder().nonNullable.group(
+    {
+      type: TransactionType.Expense,
+      amount: [0, [Validators.min(0.01)]],
+      category_id: '',
+      wallet_id: ['', [Validators.required]],
+      to_wallet_id: '',
+    },
+    {
+      validators: [this.transactionValidator],
+    },
+  );
 
   private _formGroupValue = toSignal(this.formGroup.valueChanges, {
     initialValue: this.formGroup.getRawValue(),
   });
 
-  protected amountPrefix = computed(() => ['+', '-', ''][this._formGroupValue().type ?? 1]);
+  protected view = computed(() => {
+    const formValue = this._formGroupValue();
+    const wallets = this._walletService.wallets();
+    const allCats = this._categoryService
+      .categories()
+      .flatMap((c) => [c, ...(c.subCategories || [])]);
+
+    return {
+      isTransfer: formValue.type === TransactionType.Transfer,
+      prefix: ['+', '-', ''][formValue.type ?? 1],
+      wallet: wallets.find((w) => w.id === formValue.wallet_id),
+      toWallet: wallets.find((w) => w.id === formValue.to_wallet_id),
+      category: allCats.find((c) => c.id === formValue.category_id),
+      color:
+        this._walletService.walletColors[wallets.findIndex((w) => w.id === formValue.wallet_id)],
+    };
+  });
 
   protected displayAmount = signal<string>('0');
-
-  private _walletIndex = computed(() =>
-    this._walletService
-      .wallets()
-      .findIndex((wallet) => wallet.id === this._formGroupValue().walletId),
-  );
-
-  protected walletColor = computed(() => this._walletService.walletColors[this._walletIndex()]);
-
-  protected walletData = linkedSignal<Wallet | undefined>(
-    () => this._walletService.wallets()[this._walletIndex()],
-  );
-
-  protected categoryData = linkedSignal<Category | undefined>(() => {
-    const cat = this._categoryService
-      .categories()
-      .flatMap((cat) => [cat, ...(cat.subCategories || [])])
-      .find((cat) => cat.id === this._formGroupValue().categoryId);
-
-    return cat;
-  });
 
   constructor() {
     const { type, walletId } = inject(ActivatedRoute).snapshot.queryParams;
 
     this.formGroup.controls.type.setValue(Number(type) ?? TransactionType.Expense);
-    this.formGroup.controls.walletId.setValue(walletId);
+    this.formGroup.controls.wallet_id.setValue(walletId);
 
     const lastUsedCategory = this._categoryService.frequentCategories()[0];
 
     if (lastUsedCategory) {
-      this.formGroup.controls.categoryId.setValue(lastUsedCategory.id);
+      this.formGroup.controls.category_id.setValue(lastUsedCategory.id);
     }
   }
 
-  async openWalletSelectionModal() {
+  async openWalletSelectionModalFor(field: 'wallet_id' | 'to_wallet_id') {
     const modal = await this._modalCtrl.create({
       component: WalletsModal,
+      componentProps: {
+        title: field === 'wallet_id' ? 'Wallet' : 'To wallet',
+        excludeId: field === 'to_wallet_id' ? this._formGroupValue().wallet_id : undefined,
+      },
     });
 
     await modal.present();
@@ -214,7 +228,7 @@ export class QuickTransactionForm {
     const { data: selectedWallet } = await modal.onWillDismiss();
 
     if (selectedWallet) {
-      this.formGroup.controls.walletId.setValue(selectedWallet.id);
+      this.formGroup.get(field)?.setValue(selectedWallet.id);
     }
   }
 
@@ -228,7 +242,7 @@ export class QuickTransactionForm {
     const { data: selectedCategory } = await modal.onWillDismiss();
 
     if (selectedCategory) {
-      this.formGroup.controls.categoryId.setValue(selectedCategory.id);
+      this.formGroup.controls.category_id.setValue(selectedCategory.id);
     }
   }
 
@@ -241,34 +255,58 @@ export class QuickTransactionForm {
     this.formGroup.controls.amount.setValue(Math.max(0, value));
   }
 
-  save() {
+  async save() {
     if (this.formGroup.invalid) return this.toastIfInvalid();
 
     console.log(this.formGroup.getRawValue());
+
+    try {
+      const user = this._authService.currentUser();
+      if (!user) throw new Error('User not found');
+
+      const formValue = this.formGroup.getRawValue();
+
+      this.status.set('loading');
+
+      await this._transactionService.create(formValue, user.uid);
+
+      this._categoryService.addToFrequent(formValue.category_id, user.uid);
+
+      this.showToast('New transaction has been created');
+
+      this._navCtrl.back();
+    } catch (error) {
+      console.error('Error when saving transaction:', error);
+      this.status.set('idle');
+
+      this.showToast(`Failed to create new transaction. Please try again: ${error}`, 'danger');
+    } finally {
+      this.status.set('loaded');
+    }
   }
 
-  private toastIfInvalid() {
+  private async toastIfInvalid() {
     const errorMessages = [];
 
-    const {
-      amount: amountControl,
-      categoryId: categoryControl,
-      walletId: walletControl,
-    } = this.formGroup.controls;
+    const { amount: amountControl, wallet_id: walletControl } = this.formGroup.controls;
 
     if (amountControl.invalid) {
       errorMessages.push('Please fill out amount field');
-    }
-
-    if (categoryControl.invalid) {
-      errorMessages.push('Please fill out category field');
     }
 
     if (walletControl.invalid) {
       errorMessages.push('Please fill out wallet field');
     }
 
-    errorMessages.forEach((message) => this.showToast(message, 'danger'));
+    if (this.formGroup.hasError('categoryRequired')) {
+      errorMessages.push('Please fill out category field');
+    }
+
+    if (this.formGroup.hasError('toWalletRequired')) {
+      errorMessages.push('Please fill out to wallet field');
+    }
+
+    errorMessages.forEach(async (message) => await this.showToast(message, 'danger'));
 
     return;
   }
@@ -281,5 +319,21 @@ export class QuickTransactionForm {
       position: 'bottom',
     });
     await toast.present();
+  }
+
+  private transactionValidator(control: AbstractControl) {
+    const type = control.get('type')?.value;
+    const categoryId = control.get('category_id')?.value;
+    const toWalletId = control.get('to_wallet_id')?.value;
+
+    if ([TransactionType.Income, TransactionType.Expense].includes(type) && !categoryId) {
+      return { categoryRequired: true };
+    }
+
+    if (type === TransactionType.Transfer && !toWalletId) {
+      return { toWalletRequired: true };
+    }
+
+    return null;
   }
 }

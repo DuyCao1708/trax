@@ -35,7 +35,7 @@ export abstract class SyncableEntityService<T extends SyncableEntity> {
 
   abstract loadAll(userId: string): Promise<T[]>;
 
-  async pull(userId: string): Promise<SyncResult> {
+  async pull(userId: string): Promise<SyncResult<T>> {
     try {
       const lastSyncTs = await this.getLastSyncTimestamp(userId);
 
@@ -44,7 +44,7 @@ export abstract class SyncableEntityService<T extends SyncableEntity> {
 
       const querySnapshot = await getDocs(q);
 
-      if (querySnapshot.empty) return SyncResult.NothingChanged;
+      if (querySnapshot.empty) return { hasChanged: false };
 
       const items = querySnapshot.docs.map((doc) => ({
         ...(doc.data() as T),
@@ -57,14 +57,14 @@ export abstract class SyncableEntityService<T extends SyncableEntity> {
       const latestSyncTs = items[items.length - 1].updated_at;
       await this.setLastTimestamp(latestSyncTs, userId);
 
-      return SyncResult.HasChanged;
+      return { hasChanged: true, changes: items };
     } catch (error) {
       console.error(`Pull failed: ${this.tableName}`, error);
-      return SyncResult.NothingChanged;
+      return { hasChanged: false };
     }
   }
 
-  async push(userId: string): Promise<void> {
+  async push(userId: string): Promise<SyncResult<T>> {
     const sql = `SELECT * FROM ${this.tableName} WHERE sync_status IN (?, ?) AND user_id = ?`;
 
     const localItems = await this.databaseService.query(sql, [
@@ -74,39 +74,45 @@ export abstract class SyncableEntityService<T extends SyncableEntity> {
     ]);
 
     const items = localItems.values || [];
-    if (!items.length) return;
+    if (!items.length) return { hasChanged: false };
 
     const CHUNK_SIZE = 500;
     const totalItems = items.length;
+    let pushedItems = [];
 
     for (let i = 0; i < totalItems; i += CHUNK_SIZE) {
       const chunk = items.slice(i, i + CHUNK_SIZE);
-
+      const chunkIds = chunk.map((item) => item.id);
       const batch = this.getUpdateFirestoreBatch(chunk, userId);
 
       try {
         await batch.commit();
 
-        await this.updateLocalSyncStatus(
-          SyncStatus.Synced,
-          chunk.map((item) => item.id),
-        );
+        await this.updateLocalSyncStatus(SyncStatus.Synced, chunkIds);
+        pushedItems.push(...chunk);
       } catch (error) {
         console.error(`Push failed for ${this.tableName}:`, error);
 
-        await this.updateLocalSyncStatus(
-          SyncStatus.Failed,
-          chunk.map((item) => item.id),
-        );
+        await this.updateLocalSyncStatus(SyncStatus.Failed, chunkIds);
       }
     }
+
+    return pushedItems ? { hasChanged: true, changes: pushedItems } : { hasChanged: false };
   }
 
-  async sync(userId: string): Promise<SyncResult> {
-    const pullResult = await this.pull(userId);
+  async sync(userId: string): Promise<SyncResult<T>> {
+    const result = await this.pull(userId);
     await this.push(userId);
 
-    return pullResult;
+    if (result.hasChanged) {
+      await this.afterPullChanged(userId, result.changes);
+    }
+
+    return result;
+  }
+
+  protected async afterPullChanged(userId: string, changes: T[]): Promise<void> {
+    return Promise.resolve();
   }
 
   //#region Private methods

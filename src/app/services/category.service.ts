@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
 import { Category, CategoryMapper } from '../models/category';
 import { DatabaseService } from './database.service';
 import { CategoryEntity } from '../entities/category';
@@ -8,6 +8,7 @@ import { Preferences } from '@capacitor/preferences';
 import { SyncableEntityService } from './syncable-entity.service';
 import { SyncService } from './sync.service';
 import { v4 as uuid } from 'uuid';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root',
@@ -48,6 +49,27 @@ export class CategoryService extends SyncableEntityService<CategoryEntity> {
 
   constructor() {
     super(Entities.Categories);
+    const authService = inject(AuthService);
+
+    effect(() => {
+      const user = authService.currentUser();
+
+      if (user)
+        untracked(() => {
+          this.loadFrequents(user.uid);
+        });
+      else if (!user) this._frequentIds.set([]);
+    });
+  }
+
+  async loadFrequents(userId: string) {
+    const key = `${OPERATION_KEYS.FREQUENT_CATEGORIES}_${userId}`;
+    const { value } = await Preferences.get({ key });
+
+    if (value) {
+      const ids = JSON.parse(value);
+      this._frequentIds.set(Array.isArray(ids) ? ids : []);
+    }
   }
 
   async loadAll(userId: string): Promise<CategoryEntity[]> {

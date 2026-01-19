@@ -1,4 +1,4 @@
-import { Component, inject, Signal } from '@angular/core';
+import { Component, computed, inject, Signal } from '@angular/core';
 import {
   IonButtons,
   IonContent,
@@ -44,7 +44,7 @@ import { RouterLink } from '@angular/router';
           </ion-button>
         </ion-buttons>
 
-        <ion-title>Wallet</ion-title>
+        <ion-title>{{ title }}</ion-title>
 
         <ion-buttons slot="end">
           <ion-button routerLink="/wallets-settings" (click)="dismiss()">
@@ -84,7 +84,13 @@ export class WalletsModal {
   private _walletService = inject(WalletService);
   private _modalCtrl = inject(ModalController);
 
-  wallets: Signal<Wallet[]> = this._walletService.wallets;
+  wallets = computed(() =>
+    this._walletService.wallets().filter((wallet) => wallet.id !== this.excludeId),
+  );
+
+  readonly title: string = 'Wallet';
+
+  readonly excludeId: string | undefined;
 
   get colors() {
     return this._walletService.walletColors.map((color) => `bg-${color}-500`);

@@ -78,7 +78,7 @@ export class AuthService {
 
     await this.removeUserOperationPreferences();
 
-    await this._databaseService.reset();
+    await this._databaseService.resetUserLocalData(this.currentUser()!.uid);
 
     this.currentUser.set(null);
     this._router.navigate(['/']);

@@ -47,15 +47,15 @@ export class DatabaseService {
     return res;
   }
 
-  async reset() {
+  async resetUserLocalData(userId: string) {
     const tables = Object.values(Entities).filter((t) => t !== Entities.Users);
 
-    await this.executeSet(
-      tables.map((table) => ({
-        statement: `DELETE FROM ${table}`,
-        values: [],
-      })),
-    );
+    const statements = tables.map((table) => ({
+      statement: `DELETE FROM ${table} WHERE user_id = ?`,
+      values: [userId],
+    }));
+
+    await this.executeSet(statements);
 
     await this.seedDefaultCategories();
   }

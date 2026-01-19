@@ -1,4 +1,8 @@
-export enum SyncResult {
-  NothingChanged,
-  HasChanged,
-}
+export type SyncResult<T> =
+  | {
+      hasChanged: false;
+    }
+  | {
+      hasChanged: true;
+      changes: T[];
+    };

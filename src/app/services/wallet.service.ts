@@ -28,7 +28,7 @@ export class WalletService extends SyncableEntityService<WalletEntity> {
   }
 
   async loadAll(userId: string): Promise<WalletEntity[]> {
-    const sql = `SELECT * FROM ${Entities.Wallets} WHERE user_id = ? AND is_deleted = 0 ORDER BY sort_order ASC`;
+    const sql = `SELECT * FROM ${this.tableName} WHERE user_id = ? AND is_deleted = 0 ORDER BY sort_order ASC`;
     const result = await this._databaseService.query(sql, [userId]);
 
     const data = result.values || [];
@@ -37,10 +37,11 @@ export class WalletService extends SyncableEntityService<WalletEntity> {
     return data;
   }
 
-  async create(data: { name: string; balance: number; currency: string }, userId: string) {
+  async create(data: { name: string; initial_balance: number; currency: string }, userId: string) {
     const newWallet: WalletEntity = {
       id: uuid(),
       ...data,
+      balance: data.initial_balance,
       user_id: userId,
       updated_at: Date.now(),
       is_deleted: 0,
@@ -48,12 +49,13 @@ export class WalletService extends SyncableEntityService<WalletEntity> {
       sync_status: SyncStatus.Pending,
     };
 
-    const sql = `INSERT INTO ${Entities.Wallets} (id, name, balance, currency, user_id, updated_at, is_deleted, sort_order, sync_status) VALUES (?,?,?,?,?,?,?,?,?)`;
+    const sql = `INSERT INTO ${this.tableName} (id, name, balance, initial_balance, currency, user_id, updated_at, is_deleted, sort_order, sync_status) VALUES (?,?,?,?,?,?,?,?,?,?)`;
 
     await this._databaseService.execute(sql, [
       newWallet.id,
       newWallet.name,
       newWallet.balance,
+      newWallet.initial_balance,
       newWallet.currency,
       newWallet.user_id,
       newWallet.updated_at,
@@ -69,22 +71,17 @@ export class WalletService extends SyncableEntityService<WalletEntity> {
     return newWallet;
   }
 
-  async update(
-    id: string,
-    data: { name: string; balance: number; currency: string },
-    userId: string,
-  ) {
+  async update(id: string, data: { name: string; currency: string }, userId: string) {
     const updatedAt = Date.now();
 
     const sql = `
-    UPDATE ${Entities.Wallets} 
-    SET name = ?, balance = ?, currency = ?, updated_at = ?, sync_status = ? 
+    UPDATE ${this.tableName} 
+    SET name = ?, currency = ?, updated_at = ?, sync_status = ? 
     WHERE id = ? AND user_id = ?
   `;
 
     await this._databaseService.execute(sql, [
       data.name,
-      data.balance,
       data.currency,
       updatedAt,
       SyncStatus.Pending,
@@ -97,6 +94,58 @@ export class WalletService extends SyncableEntityService<WalletEntity> {
     );
 
     this.sync(userId);
+  }
+
+  async updateBalanceLocal(walletId: string, amount: number, userId: string) {
+    const sql = `UPDATE ${this.tableName} SET balance = balance + ?, updated_at = ? WHERE id = ? & user_id = ?`;
+    await this.databaseService.execute(sql, [amount, Date.now(), walletId, userId]);
+
+    this.entities.update((list) =>
+      list.map((w) => (w.id === walletId ? { ...w, balance: w.balance + amount } : w)),
+    );
+  }
+
+  async reconcileBalance(walletId: string, userId: string) {
+    const sql = `
+    SELECT 
+      (SELECT initial_balance FROM ${this.tableName} WHERE id = ?) as baseAmount,
+      TOTAL(
+        CASE 
+          WHEN wallet_id = ? AND type = 0 THEN amount    
+          WHEN wallet_id = ? AND type = 1 THEN -amount   
+          WHEN wallet_id = ? AND type = 2 THEN -amount   
+          WHEN to_wallet_id = ? AND type = 2 THEN amount  
+          ELSE 0 
+        END
+      ) as transactionDelta
+    FROM ${Entities.Transactions}
+    WHERE (wallet_id = ? OR to_wallet_id = ?) 
+      AND is_deleted = 0 
+      AND user_id = ?
+  `;
+
+    const result = await this.databaseService.query(sql, [
+      walletId,
+      walletId,
+      walletId,
+      walletId,
+      walletId,
+      walletId,
+      walletId,
+      userId,
+    ]);
+
+    const row = result.values?.[0];
+    const netBalance = (row?.baseAmount ?? 0) + (row?.transactionDelta ?? 0);
+
+    await this.databaseService.execute(
+      `UPDATE ${this.tableName} SET balance = ?, updated_at = ?, sync_status = ? WHERE id = ?`,
+      [netBalance, Date.now(), SyncStatus.Pending, walletId],
+    );
+
+    this.entities.update((list) =>
+      list.map((w) => (w.id === walletId ? { ...w, balance: netBalance } : w)),
+    );
   }
 
   async reorderWallets(newOrder: Wallet[], userId: string) {
@@ -116,7 +165,7 @@ export class WalletService extends SyncableEntityService<WalletEntity> {
     this.entities.set(updatedEntities);
 
     const statements = updatedEntities.map((e) => ({
-      statement: `UPDATE ${Entities.Wallets} SET sort_order = ?, sync_status = ${SyncStatus.Pending}, updated_at = ${updatedAt} WHERE id = ?`,
+      statement: `UPDATE ${this.tableName} SET sort_order = ?, sync_status = ${SyncStatus.Pending}, updated_at = ${updatedAt} WHERE id = ?`,
       values: [e.sort_order, e.id],
     }));
     await this._databaseService.executeSet(statements);
@@ -126,7 +175,7 @@ export class WalletService extends SyncableEntityService<WalletEntity> {
 
   async delete(id: string, userId: string) {
     const updatedAt = Date.now();
-    const sql = `UPDATE ${Entities.Wallets} SET is_deleted = 1, updated_at = ?, sync_status = ? WHERE id = ?`;
+    const sql = `UPDATE ${this.tableName} SET is_deleted = 1, updated_at = ?, sync_status = ? WHERE id = ?`;
 
     await this._databaseService.execute(sql, [updatedAt, SyncStatus.Pending, id]);
 

@@ -90,7 +90,7 @@ import { ActivatedRoute } from '@angular/router';
           <ion-item>
             <ion-input
               class="custom-input"
-              formControlName="balance"
+              formControlName="initial_balance"
               label="Initial value"
               label-placement="floating"
               fill="solid"
@@ -126,7 +126,7 @@ export class WalletForm {
 
   protected formGroup = new FormBuilder().nonNullable.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
-    balance: [0, [Validators.required, Validators.min(0)]],
+    initial_balance: [0, [Validators.required, Validators.min(0)]],
     currency: ['VND', [Validators.required]],
   });
 
@@ -148,7 +148,7 @@ export class WalletForm {
     if (this._walletId) {
       this.loadWalletData(this._walletId);
 
-      this.formGroup.controls.balance.disable();
+      this.formGroup.controls.initial_balance.disable();
     }
   }
 
@@ -167,7 +167,7 @@ export class WalletForm {
 
       const data = {
         name: formValue.name,
-        balance: Number(formValue.balance),
+        initial_balance: Number(formValue.initial_balance),
         currency: formValue.currency!,
       };
 
@@ -230,7 +230,7 @@ export class WalletForm {
       this.formGroup.setValue({
         name: wallet.name,
         currency: wallet.currency,
-        balance: wallet.balance,
+        initial_balance: wallet.initial_balance,
       });
     }
   }

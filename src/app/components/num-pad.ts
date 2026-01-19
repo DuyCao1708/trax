@@ -67,7 +67,7 @@ export class NumPad {
       this.backspace();
     }
 
-    this.displayChange.emit(this._displayValue());
+    this.emitChanges();
   }
 
   private inputDigit(digit: number | ',') {
@@ -85,11 +85,7 @@ export class NumPad {
 
   private backspace() {
     const current = this._displayValue();
-    if (current.length > 1) {
-      this._displayValue.set(current.slice(0, -1));
-    } else {
-      this._displayValue.set('0');
-    }
+    this._displayValue.set(current.length > 1 ? current.slice(0, -1) : '0');
   }
 
   handleOperator(nextOperator: NumPadOperator) {
@@ -108,8 +104,7 @@ export class NumPad {
       this._displayValue.set(String(result));
       this._firstOperand.set(result);
 
-      this.valueChange.emit(result);
-      this.displayChange.emit(String(result));
+      this.emitChanges();
     }
 
     this._waitForSecondOperand.set(true);
@@ -134,5 +129,11 @@ export class NumPad {
       default:
         return second;
     }
+  }
+
+  private emitChanges() {
+    this.displayChange.emit(this._displayValue());
+    const numericValue = parseFloat(this._displayValue().replace(',', '.'));
+    this.valueChange.emit(isNaN(numericValue) ? 0 : numericValue);
   }
 }

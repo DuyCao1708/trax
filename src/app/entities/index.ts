@@ -1,8 +1,9 @@
 export enum Entities {
-  // Patterns = 'patterns',
   Wallets = 'wallets',
   Categories = 'categories',
   Users = 'users',
+  Transactions = 'transactions',
+  // Patterns = 'patterns',
 }
 
 export type BooleanNumber = 0 | 1 | '0' | '1';

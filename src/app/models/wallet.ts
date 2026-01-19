@@ -10,6 +10,7 @@ export const WalletMapper: Mapper<WalletEntity, Wallet> = {
   toModel: (entity: WalletEntity) => ({
     id: entity.id,
     name: entity.name,
+    initial_balance: entity.initial_balance,
     balance: entity.balance,
     currency: entity.currency,
   }),
