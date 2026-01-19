@@ -27,13 +27,13 @@ export abstract class SyncableEntityService<T extends SyncableEntity> {
 
       if (user && version > 0)
         untracked(() => {
-          this.loadAll(user.uid);
+          this.load(user.uid);
         });
       else if (!user) this.entities.set([]);
     });
   }
 
-  abstract loadAll(userId: string): Promise<T[]>;
+  abstract load(userId: string, ...args: any[]): Promise<T[]>;
 
   async pull(userId: string): Promise<SyncResult<T>> {
     try {

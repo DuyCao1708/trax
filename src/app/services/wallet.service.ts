@@ -28,7 +28,7 @@ export class WalletService extends SyncableEntityService<WalletEntity> {
     super(Entities.Wallets);
   }
 
-  async loadAll(userId: string): Promise<WalletEntity[]> {
+  async load(userId: string): Promise<WalletEntity[]> {
     const sql = `SELECT * FROM ${this.tableName} WHERE user_id = ? AND is_deleted = 0 ORDER BY sort_order ASC`;
     const result = await this._databaseService.query(sql, [userId]);
 
@@ -144,7 +144,7 @@ export class WalletService extends SyncableEntityService<WalletEntity> {
       userId,
     ]);
 
-    await this.loadAll(userId);
+    await this.load(userId);
   }
 
   async reorderWallets(newOrder: Wallet[], userId: string) {

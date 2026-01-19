@@ -1,6 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
-import { TransactionType } from '../entities/transaction';
-import { PatternEntity } from '../entities/pattern';
+import { Component, inject } from '@angular/core';
 import { Wallets } from '../components/wallets';
 import { Header } from '../components/header';
 import {
@@ -12,15 +10,13 @@ import {
   IonFabButton,
   IonIcon,
   IonFabList,
-  IonButton,
 } from '@ionic/angular/standalone';
 import { AuthService } from '../services/auth.service';
 import { SyncService } from '../services/sync.service';
 import { RouterLink } from '@angular/router';
 import { TransactionService } from '../services/transaction.service';
-import { Preferences } from '@capacitor/preferences';
-import { OPERATION_KEYS } from '../constants';
 import { WalletService } from '../services/wallet.service';
+import { TransactionsOverview } from '../components/transactions-overview';
 
 @Component({
   selector: 'home',
@@ -35,6 +31,7 @@ import { WalletService } from '../services/wallet.service';
     IonIcon,
     RouterLink,
     IonFabList,
+    TransactionsOverview,
   ],
   template: `
     <ion-content>
@@ -48,6 +45,8 @@ import { WalletService } from '../services/wallet.service';
         class="block px-4 pb-4 border-b border-(--ion-text-color-step-800)"
         (walletSelected)="selectedWalletId = $event"
       ></wallets>
+
+      <transactions-overview class="mt-2 mx-2"></transactions-overview>
 
       <ion-fab vertical="bottom" horizontal="end" slot="fixed">
         <ion-fab-button [style.--color]="'var(--color-white)'">
@@ -105,7 +104,7 @@ export class Home {
       const userId = this._authService.currentUser()?.uid;
       if (userId) {
         await this._syncService.syncAll(userId);
-        this._walletService.loadAll(userId);
+        this._walletService.load(userId);
       }
     } catch (error) {
       console.error('Lỗi khi refresh:', error);

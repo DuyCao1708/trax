@@ -75,7 +75,7 @@ export class CategoryService extends SyncableEntityService<CategoryEntity> {
     }
   }
 
-  async loadAll(userId: string): Promise<CategoryEntity[]> {
+  async load(userId: string): Promise<CategoryEntity[]> {
     const sql = `SELECT * FROM ${Entities.Categories} WHERE (user_id = ? OR user_id = 'system')`;
     const result = await this._databaseService.query(sql, [userId]);
 

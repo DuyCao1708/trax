@@ -1,10 +1,19 @@
-import { inject, Injectable, signal, Signal, WritableSignal } from '@angular/core';
+import {
+  computed,
+  effect,
+  inject,
+  Injectable,
+  signal,
+  Signal,
+  WritableSignal,
+} from '@angular/core';
 import { TransactionEntity, TransactionType } from '../entities/transaction';
 import { SyncableEntityService } from './syncable-entity.service';
 import { Entities, SyncStatus } from '../entities';
 import { v4 as uuid } from 'uuid';
 import { WalletService } from './wallet.service';
-import { SyncResult } from '../models';
+import { TransactionMapper } from '../models/transaction';
+import { SyncService } from './sync.service';
 
 @Injectable({
   providedIn: 'root',
@@ -12,17 +21,15 @@ import { SyncResult } from '../models';
 export class TransactionService extends SyncableEntityService<TransactionEntity> {
   private _walletService = inject(WalletService);
 
-  protected override entities: WritableSignal<TransactionEntity[]> = signal([]);
+  protected entities = signal<TransactionEntity[]>([]);
 
-  protected override version: Signal<number> = signal(0);
+  readonly transactions = computed(() => this.entities().map(TransactionMapper.toModel));
 
-  override loadAll(userId: string): Promise<TransactionEntity[]> {
-    throw new Error('Method not implemented.');
-  }
+  protected version = inject(SyncService).getEntityVersion(Entities.Categories);
 
-  constructor() {
-    super(Entities.Transactions);
-  }
+  private _currentPage = 0;
+  private _pageSize = 10;
+  private _hasMore = signal(true);
 
   get types() {
     return Object.entries(TransactionType)
@@ -32,6 +39,32 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
         id: value,
         icon: ['add-outline', 'remove-outline', 'swap-horizontal-outline'][index],
       }));
+  }
+
+  constructor() {
+    super(Entities.Transactions);
+
+    effect(() => console.log(this.transactions()));
+  }
+
+  async load(userId: string, options: { reset: boolean } = { reset: true }) {
+    const { reset } = options;
+    this._currentPage = reset ? 0 : this._currentPage + 1;
+
+    const newData = await this.loadByPage(userId, this._currentPage);
+
+    if (reset) {
+      this.entities.set(newData);
+      this._hasMore.set(true);
+    } else {
+      this.entities.update((prev) => [...prev, ...newData]);
+    }
+
+    if (newData.length < this._pageSize) {
+      this._hasMore.set(false);
+    }
+
+    return this.entities();
   }
 
   async create(
@@ -69,7 +102,7 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
     return newTransaction;
   }
 
-  override async afterSyncChanged(userId: string, changes: TransactionEntity[]) {
+  protected override async afterSyncChanged(userId: string, changes: TransactionEntity[]) {
     if (!changes || changes.length === 0) return;
 
     const affectedWalletIds = [
@@ -82,6 +115,7 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
     }
   }
 
+  //#region Private methods
   private async handleBalanceUpdate(transaction: TransactionEntity, userId: string) {
     if (transaction.type === TransactionType.Income) {
       await this._walletService.updateBalanceLocal(
@@ -110,4 +144,25 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
       }
     }
   }
+
+  private async loadByPage(userId: string, page: number): Promise<TransactionEntity[]> {
+    const offset = page * this._pageSize;
+
+    const sql = `
+      SELECT 
+        t.*, 
+        c.name as category_name, c.icon as category_icon, c.color as category_color,
+        w.name as wallet_name
+      FROM ${this.tableName} t
+      LEFT JOIN ${Entities.Categories} c ON t.category_id = c.id
+      LEFT JOIN ${Entities.Wallets} w ON t.wallet_id = w.id
+      WHERE t.user_id = ? AND t.is_deleted = 0
+      ORDER BY t.updated_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const result = await this.databaseService.query(sql, [userId, this._pageSize, offset]);
+    return result.values || [];
+  }
+  //#endregion
 }
