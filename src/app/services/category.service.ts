@@ -43,9 +43,12 @@ export class CategoryService extends SyncableEntityService<CategoryEntity> {
 
   private _frequentIds = signal<string[]>([]);
 
-  readonly frequentCategories = computed(() =>
-    this.categories().filter((cat) => this._frequentIds().includes(cat.id)),
-  );
+  readonly frequentCategories = computed(() => {
+    const ids = this._frequentIds();
+    const allCats = this.categories();
+
+    return ids.map((id) => allCats.find((cat) => cat.id === id)).filter((cat) => !!cat);
+  });
 
   constructor() {
     super(Entities.Categories);
