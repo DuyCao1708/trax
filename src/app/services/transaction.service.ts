@@ -1,11 +1,11 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { TransactionEntity, TransactionType } from '../entities/transaction';
 import { SyncableEntityService } from './syncable-entity.service';
 import { Entities, SyncStatus } from '../entities';
 import { v4 as uuid } from 'uuid';
 import { WalletService } from './wallet.service';
 
-interface TransactionLoadOptions {
+export interface TransactionLoadOptions {
   walletIds?: string[];
   categoryIds?: string[];
   startAt?: number;
@@ -19,11 +19,6 @@ interface TransactionLoadOptions {
 })
 export class TransactionService extends SyncableEntityService<TransactionEntity> {
   private _walletService = inject(WalletService);
-
-  readonly filters = signal<TransactionLoadOptions>({
-    pageSize: 10,
-    pageIndex: 0,
-  });
 
   get types() {
     return Object.entries(TransactionType)
@@ -48,7 +43,7 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
 
     if (walletIds.length > 0) {
       const placeholders = walletIds.map(() => '?').join(',');
-      filterSql += ` AND t.wallet_id IN (${placeholders}) OR t.to_wallet_id IN (${placeholders})`;
+      filterSql += ` AND (t.wallet_id IN (${placeholders}) OR t.to_wallet_id IN (${placeholders}))`;
       params.push(...walletIds, ...walletIds);
     }
 

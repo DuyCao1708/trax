@@ -106,7 +106,7 @@ import { AuthService } from '../services/auth.service';
               "
             >
               @if (displayAmount().endsWith('.')) {
-                {{ displayAmount() | number: '1.0-0' }},
+                {{ displayAmount() | number: '1.0-0' }}.
               } @else {
                 {{ displayAmount() | number: '1.0-3' }}
               }

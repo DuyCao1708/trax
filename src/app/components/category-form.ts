@@ -143,7 +143,6 @@ import { CATEGORY_COLORS, CATEGORY_ICONS } from '../constants';
 
       <ion-modal
         #nameModal
-        trigger="open-name-modal"
         [style.--width]="'fit-content'"
         [style.--min-width]="'240px'"
         [style.--height]="'fit-content'"

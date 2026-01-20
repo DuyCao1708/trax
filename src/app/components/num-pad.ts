@@ -45,7 +45,7 @@ export class NumPad {
     1,
     2,
     3,
-    ',',
+    '.',
     0,
     '←',
   ]);
@@ -61,7 +61,7 @@ export class NumPad {
   private _waitForSecondOperand = signal<boolean>(false);
 
   handleKey(key: NumPadKey | NumPadDelete | NumPadSeparator) {
-    if (typeof key === 'number' || key === ',') {
+    if (typeof key === 'number' || key === '.') {
       this.inputDigit(key);
     } else if (key === '←') {
       this.backspace();
@@ -70,8 +70,8 @@ export class NumPad {
     this.emitChanges();
   }
 
-  private inputDigit(digit: number | ',') {
-    const val = digit === ',' ? '.' : digit.toString();
+  private inputDigit(digit: number | '.') {
+    const val = digit.toString();
     const current = this._displayValue();
 
     if (this._waitForSecondOperand()) {

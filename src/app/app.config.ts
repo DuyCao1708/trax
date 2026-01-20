@@ -20,7 +20,6 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideIonicAngular({}),
-    { provide: LOCALE_ID, useValue: 'vi-VN' },
     provideAppInitializer(async () => {
       await inject(InitializeAppService).initializeApp();
     }),

@@ -43,6 +43,7 @@
     "@capacitor/share": "^8.0.0",
     "@capgo/capacitor-native-biometric": "^8.0.3",
     "@ionic/angular": "^8.7.16",
+    "date-fns": "^4.1.0",
     "firebase": "^12.7.0",
     "notification-reader": "file:plugins/notification-reader",
     "rxjs": "~7.8.0",
