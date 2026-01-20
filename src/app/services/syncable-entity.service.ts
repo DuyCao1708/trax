@@ -1,11 +1,10 @@
-import { effect, inject, Injectable, Signal, untracked, WritableSignal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Entities, SyncableEntity, SyncStatus } from '../entities';
 import { DatabaseService } from './database.service';
 import { OPERATION_KEYS } from '../constants';
 import { Preferences } from '@capacitor/preferences';
 import { collection, doc, getDocs, orderBy, query, where, writeBatch } from 'firebase/firestore';
 import { FirebaseService } from './firebase.service';
-import { AuthService } from './auth.service';
 import { SyncResult } from '../models';
 
 @Injectable({
@@ -15,25 +14,7 @@ export abstract class SyncableEntityService<T extends SyncableEntity> {
   protected databaseService = inject(DatabaseService);
   protected firestore = inject(FirebaseService).database;
 
-  protected abstract entities: WritableSignal<T[]>;
-  protected abstract version: Signal<number>;
-
-  constructor(protected tableName: Entities) {
-    const authService = inject(AuthService);
-
-    effect(() => {
-      const user = authService.currentUser();
-      const version = this.version();
-
-      if (user && version > 0)
-        untracked(() => {
-          this.load(user.uid);
-        });
-      else if (!user) this.entities.set([]);
-    });
-  }
-
-  abstract load(userId: string, ...args: any[]): Promise<T[]>;
+  constructor(protected tableName: Entities) {}
 
   async pull(userId: string): Promise<SyncResult<T>> {
     try {

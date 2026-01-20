@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { Wallets } from '../components/wallets';
 import { Header } from '../components/header';
 import {
@@ -17,6 +17,7 @@ import { RouterLink } from '@angular/router';
 import { TransactionService } from '../services/transaction.service';
 import { WalletService } from '../services/wallet.service';
 import { TransactionsOverview } from '../components/transactions-overview';
+import { Wallet } from '../models/wallet';
 
 @Component({
   selector: 'home',
@@ -42,11 +43,14 @@ import { TransactionsOverview } from '../components/transactions-overview';
       <header></header>
 
       <wallets
-        class="block px-4 pb-4 border-b border-(--ion-text-color-step-800)"
-        (walletSelected)="selectedWalletId = $event"
+        class="block px-3 pb-4 border-b border-(--ion-text-color-step-800)"
+        (walletsSelected)="selectedWallets.set($event)"
       ></wallets>
 
-      <transactions-overview class="mt-2 mx-2"></transactions-overview>
+      <transactions-overview
+        class="mt-2 mx-3"
+        [fromWallets]="selectedWallets()"
+      ></transactions-overview>
 
       <ion-fab vertical="bottom" horizontal="end" slot="fixed">
         <ion-fab-button [style.--color]="'var(--color-white)'">
@@ -57,7 +61,7 @@ import { TransactionsOverview } from '../components/transactions-overview';
           @for (type of transactionTypes; track type.id) {
             <ion-fab-button
               [routerLink]="['/quick-transaction-form']"
-              [queryParams]="{ type: type.id, walletId: selectedWalletId }"
+              [queryParams]="{ type: type.id, walletId: selectedWallets()[0]?.id }"
               [attr.data-label]="type.name"
             >
               <ion-icon [name]="type.icon"></ion-icon>
@@ -95,9 +99,7 @@ export class Home {
 
   protected readonly transactionTypes = this._transactionService.types;
 
-  protected selectedWalletId: string = '';
-
-  async ngOnInit() {}
+  protected selectedWallets = signal<Wallet[]>([]);
 
   async handleRefresh(event: RefresherCustomEvent) {
     try {

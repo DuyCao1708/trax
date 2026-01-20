@@ -31,11 +31,11 @@ import { OPERATION_KEYS } from '../constants';
         <div
           class="text-white text-sm font-medium rounded-sm px-2 py-1.5"
           [class]="
-            isSelectedAll() || selected() === wallet.id
+            selected().includes(wallet.id)
               ? backgroundColors[index % backgroundColors.length]
               : 'bg-gray-500'
           "
-          (click)="isSelectedAll.set(false); selected.set(wallet.id)"
+          (click)="selected.set([wallet.id])"
         >
           <div class="text-xs">{{ wallet.name }}</div>
 
@@ -52,20 +52,18 @@ import { OPERATION_KEYS } from '../constants';
     </div>
 
     <div class="flex justify-center">
-      <a class="text-xs underline font-medium" (click)="isSelectedAll.set(true)">Select all</a>
+      <a class="text-xs underline font-medium" (click)="selectAllWallets()">Select all</a>
     </div>
   `,
 })
 export class Wallets {
   private _walletService = inject(WalletService);
 
-  walletSelected = output<string>();
+  walletsSelected = output<Wallet[]>();
 
   protected wallets: Signal<Wallet[]> = this._walletService.wallets;
 
-  protected selected = signal<string>('');
-
-  protected isSelectedAll = signal<boolean>(false);
+  protected selected = signal<string[]>([]);
 
   get backgroundColors() {
     return this._walletService.walletColors.map((color) => `bg-${color}-500`);
@@ -74,34 +72,41 @@ export class Wallets {
   constructor() {
     effect(() => {
       const wallets = this.wallets();
-      const currentSelected = untracked(() => this.selected());
 
-      if (!currentSelected && wallets.length > 0) {
-        this.selected.set(wallets[0].id);
-      }
+      if (wallets.length === 0) return;
+
+      untracked(async () => {
+        const current = this.selected();
+        if (current.length === 0) {
+          const { value } = await Preferences.get({ key: OPERATION_KEYS.SELECTED_WALLET });
+
+          if (value) {
+            this.selected.set(JSON.parse(value));
+          } else {
+            this.selected.set([wallets[0].id]);
+          }
+        }
+      });
     });
 
     effect(() => {
-      const selectedId = this.selected();
+      const selectedIds = this.selected();
+      const wallets = this.wallets();
 
-      if (selectedId !== '') {
-        this.walletSelected.emit(selectedId);
+      if (selectedIds.length && wallets.length) {
+        const selectedWallets = wallets.filter((wallet) => selectedIds.includes(wallet.id));
+
+        this.walletsSelected.emit(selectedWallets);
 
         Preferences.set({
           key: OPERATION_KEYS.SELECTED_WALLET,
-          value: selectedId,
+          value: JSON.stringify(selectedIds),
         });
       }
     });
   }
 
-  async ngOnInit() {
-    const { value: selectedWalletId } = await Preferences.get({
-      key: OPERATION_KEYS.SELECTED_WALLET,
-    });
-
-    if (selectedWalletId) {
-      this.selected.set(selectedWalletId);
-    }
+  selectAllWallets() {
+    this.selected.set(this.wallets().map((wallet) => wallet.id));
   }
 }

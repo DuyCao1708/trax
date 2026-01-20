@@ -1,19 +1,18 @@
-import {
-  computed,
-  effect,
-  inject,
-  Injectable,
-  signal,
-  Signal,
-  WritableSignal,
-} from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { TransactionEntity, TransactionType } from '../entities/transaction';
 import { SyncableEntityService } from './syncable-entity.service';
 import { Entities, SyncStatus } from '../entities';
 import { v4 as uuid } from 'uuid';
 import { WalletService } from './wallet.service';
-import { TransactionMapper } from '../models/transaction';
-import { SyncService } from './sync.service';
+
+interface TransactionLoadOptions {
+  walletIds?: string[];
+  categoryIds?: string[];
+  startAt?: number;
+  endAt?: number;
+  pageIndex: number;
+  pageSize: number;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -21,15 +20,10 @@ import { SyncService } from './sync.service';
 export class TransactionService extends SyncableEntityService<TransactionEntity> {
   private _walletService = inject(WalletService);
 
-  protected entities = signal<TransactionEntity[]>([]);
-
-  readonly transactions = computed(() => this.entities().map(TransactionMapper.toModel));
-
-  protected version = inject(SyncService).getEntityVersion(Entities.Categories);
-
-  private _currentPage = 0;
-  private _pageSize = 10;
-  private _hasMore = signal(true);
+  readonly filters = signal<TransactionLoadOptions>({
+    pageSize: 10,
+    pageIndex: 0,
+  });
 
   get types() {
     return Object.entries(TransactionType)
@@ -43,28 +37,57 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
 
   constructor() {
     super(Entities.Transactions);
-
-    effect(() => console.log(this.transactions()));
   }
 
-  async load(userId: string, options: { reset: boolean } = { reset: true }) {
-    const { reset } = options;
-    this._currentPage = reset ? 0 : this._currentPage + 1;
+  async load(userId: string, options: TransactionLoadOptions) {
+    const { walletIds = [], categoryIds = [], startAt, endAt, pageSize, pageIndex } = options;
+    const offset = pageIndex * pageSize;
 
-    const newData = await this.loadByPage(userId, this._currentPage);
+    const params: any[] = [userId];
+    let filterSql = '';
 
-    if (reset) {
-      this.entities.set(newData);
-      this._hasMore.set(true);
-    } else {
-      this.entities.update((prev) => [...prev, ...newData]);
+    if (walletIds.length > 0) {
+      const placeholders = walletIds.map(() => '?').join(',');
+      filterSql += ` AND t.wallet_id IN (${placeholders}) OR t.to_wallet_id IN (${placeholders})`;
+      params.push(...walletIds, ...walletIds);
     }
 
-    if (newData.length < this._pageSize) {
-      this._hasMore.set(false);
+    if (categoryIds.length > 0) {
+      const placeholders = categoryIds.map(() => '?').join(',');
+      filterSql += ` AND t.category_id IN (${placeholders})`;
+      params.push(...categoryIds);
     }
 
-    return this.entities();
+    if (startAt) {
+      filterSql += ` AND t.updated_at >= ?`;
+      params.push(startAt);
+    }
+    if (endAt) {
+      filterSql += ` AND t.updated_at <= ?`;
+      params.push(endAt);
+    }
+
+    const sql = `
+      SELECT 
+        t.*, 
+        c.name as category_name, c.icon as category_icon, c.color as category_color,
+        w.name as wallet_name,
+        tw.name as to_wallet_name
+      FROM ${this.tableName} t
+      LEFT JOIN ${Entities.Categories} c ON t.category_id = c.id
+      LEFT JOIN ${Entities.Wallets} w ON t.wallet_id = w.id
+      LEFT JOIN ${Entities.Wallets} tw ON t.to_wallet_id = tw.id
+      WHERE t.user_id = ? AND t.is_deleted = 0 ${filterSql}
+      ORDER BY t.updated_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    params.push(pageSize, offset);
+
+    const result = await this.databaseService.query(sql, params);
+    const data = result.values || [];
+
+    return data;
   }
 
   async create(
@@ -94,8 +117,6 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
     await this.databaseService.execute(sql, values);
 
     await this.handleBalanceUpdate(newTransaction, userId);
-
-    this.entities.update((list) => [newTransaction, ...list]);
 
     this.sync(userId);
 
@@ -143,26 +164,6 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
         );
       }
     }
-  }
-
-  private async loadByPage(userId: string, page: number): Promise<TransactionEntity[]> {
-    const offset = page * this._pageSize;
-
-    const sql = `
-      SELECT 
-        t.*, 
-        c.name as category_name, c.icon as category_icon, c.color as category_color,
-        w.name as wallet_name
-      FROM ${this.tableName} t
-      LEFT JOIN ${Entities.Categories} c ON t.category_id = c.id
-      LEFT JOIN ${Entities.Wallets} w ON t.wallet_id = w.id
-      WHERE t.user_id = ? AND t.is_deleted = 0
-      ORDER BY t.updated_at DESC
-      LIMIT ? OFFSET ?
-    `;
-
-    const result = await this.databaseService.query(sql, [userId, this._pageSize, offset]);
-    return result.values || [];
   }
   //#endregion
 }

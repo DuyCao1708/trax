@@ -56,12 +56,17 @@ export class CategoryService extends SyncableEntityService<CategoryEntity> {
 
     effect(() => {
       const user = authService.currentUser();
+      const version = this.version();
 
-      if (user)
+      if (user && version > 0)
         untracked(() => {
+          this.load(user.uid);
           this.loadFrequents(user.uid);
         });
-      else if (!user) this._frequentIds.set([]);
+      else if (!user) {
+        this.entities.set([]);
+        this._frequentIds.set([]);
+      }
     });
   }
 

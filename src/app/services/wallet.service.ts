@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, effect, inject, Injectable, signal, untracked } from '@angular/core';
 import { DatabaseService } from './database.service';
 import { WalletEntity } from '../entities/wallet';
 import { Entities, SyncStatus } from '../entities';
@@ -7,6 +7,7 @@ import { Wallet, WalletMapper } from '../models/wallet';
 import { SyncableEntityService } from './syncable-entity.service';
 import { SyncService } from './sync.service';
 import { TransactionType } from '../entities/transaction';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root',
@@ -26,6 +27,19 @@ export class WalletService extends SyncableEntityService<WalletEntity> {
 
   constructor() {
     super(Entities.Wallets);
+
+    const authService = inject(AuthService);
+
+    effect(() => {
+      const user = authService.currentUser();
+      const version = this.version();
+
+      if (user && version > 0)
+        untracked(() => {
+          this.load(user.uid);
+        });
+      else if (!user) this.entities.set([]);
+    });
   }
 
   async load(userId: string): Promise<WalletEntity[]> {

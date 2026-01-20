@@ -1,16 +1,16 @@
 import { SyncableEntity } from '.';
-import { CategoryEntity } from './category';
-import { WalletEntity } from './wallet';
 
 export interface TransactionEntity extends SyncableEntity {
   type: TransactionType;
   amount: number;
   category_id?: string;
-  category?: CategoryEntity;
+  category_color?: string;
+  category_icon?: string;
+  category_name?: string;
   wallet_id: string;
-  wallet?: WalletEntity;
+  wallet_name?: string;
   to_wallet_id?: string;
-  to_wallet?: WalletEntity;
+  to_wallet_name?: string;
   counter_party?: string;
   note?: string;
 }
