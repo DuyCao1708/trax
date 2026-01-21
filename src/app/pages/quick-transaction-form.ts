@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import {
   IonHeader,
   IonToolbar,
@@ -92,7 +92,7 @@ import { AuthService } from '../services/auth.service';
         </ion-segment>
 
         <div class="flex-1 flex flex-col bg-(--quick-transaction-form-color-secondary) text-white">
-          <section class="flex-1 grid grid-cols-[auto_1fr_auto] items-center px-4">
+          <section class="flex-1 grid grid-cols-[auto_1fr_auto_20px] gap-4 items-center ps-4">
             <span class="text-[32px] font-black pe-4">
               {{ view().prefix }}
             </span>
@@ -112,9 +112,16 @@ import { AuthService } from '../services/auth.service';
               }
             </span>
 
-            <span class="text-[32px] font-light ps-10">
+            <span class="text-[32px] font-light ps-4">
               {{ view().wallet?.currency || '' }}
             </span>
+
+            <button
+              class="h-20 bg-white rounded-l-full shadow"
+              (click)="openTransactionDetailForm()"
+            >
+              <ion-icon name="chevron-back" class="text-neutral-600"></ion-icon>
+            </button>
           </section>
 
           <section
@@ -212,6 +219,12 @@ export class QuickTransactionForm {
     if (lastUsedCategory) {
       this.formGroup.controls.category_id.setValue(lastUsedCategory.id);
     }
+  }
+
+  async openTransactionDetailForm() {
+    await this._navCtrl.navigateForward('/transaction-form', {
+      state: { initialData: this._formGroupValue(), isEditting: false },
+    });
   }
 
   async openWalletSelectionModalFor(field: 'wallet_id' | 'to_wallet_id') {

@@ -8,6 +8,7 @@ import { WalletsSettings } from './pages/wallets-settings';
 import { QuickTransactionForm } from './pages/quick-transaction-form';
 import { CategoriesSettings } from './components/categories-settings';
 import { RetryAuthentication } from './pages/retry-authentication';
+import { TransactionForm } from './pages/transaction-form';
 
 export const routes: Routes = [
   { path: '', component: Login, runGuardsAndResolvers: 'always', canActivate: [guestGuard] },
@@ -48,6 +49,12 @@ export const routes: Routes = [
   {
     path: 'quick-transaction-form',
     component: QuickTransactionForm,
+    runGuardsAndResolvers: 'always',
+    canActivate: [authenticationGuard],
+  },
+  {
+    path: 'transaction-form',
+    component: TransactionForm,
     runGuardsAndResolvers: 'always',
     canActivate: [authenticationGuard],
   },

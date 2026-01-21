@@ -23,6 +23,7 @@ import {
   IonSelect,
   IonSelectOption,
   IonDatetime,
+  NavController,
 } from '@ionic/angular/standalone';
 import { TransactionLoadOptions, TransactionService } from '../services/transaction.service';
 import { DatePipe, DecimalPipe } from '@angular/common';
@@ -103,7 +104,7 @@ type ScrollEvent = {
     <div class="overflow-y-auto max-h-128 ion-content-scroll-host">
       <ion-list lines="full">
         @for (item of transactions(); track item.id) {
-          <ion-item>
+          <ion-item (click)="openTransactionForm(item)">
             <ion-button
               slot="start"
               shape="round"
@@ -261,6 +262,7 @@ type ScrollEvent = {
 export class TransactionsOverview {
   private _transactionService = inject(TransactionService);
   private _authService = inject(AuthService);
+  private _navCtrl = inject(NavController);
   private _datePickerModal = viewChild<IonModal>('datePickerModal');
   private _cdr = inject(ChangeDetectorRef);
 
@@ -336,6 +338,24 @@ export class TransactionsOverview {
     } else {
       this.processingOptions.previousPeriod = selected;
     }
+  }
+
+  async openTransactionForm(transaction: Transaction) {
+    await this._navCtrl.navigateForward('/transaction-form', {
+      state: {
+        initialData: {
+          id: transaction.id,
+          type: transaction.type,
+          amount: transaction.amount,
+          category_id: transaction.category?.id,
+          wallet_id: transaction.wallet?.id,
+          to_wallet_id: transaction.toWallet?.id,
+          note: transaction.note,
+          counter_party: transaction.counterParty,
+        },
+        isEditting: true,
+      },
+    });
   }
 
   selectDateRange(event: { detail: { value?: string[] | string | null | undefined } }) {

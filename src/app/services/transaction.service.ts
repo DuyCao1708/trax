@@ -99,6 +99,7 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
       wallet_id: string;
       to_wallet_id?: string;
       counter_party?: string;
+      note?: string;
     },
     userId: string,
   ) {
@@ -122,6 +123,62 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
     this.sync(userId);
 
     return newTransaction;
+  }
+
+  async update(id: string, data: Partial<TransactionEntity>, userId: string) {
+    const sqlSelect = `SELECT * FROM ${Entities.Transactions} WHERE id = ? AND user_id = ? LIMIT 1`;
+    const result = await this.databaseService.query(sqlSelect, [id, userId]);
+    if (result.values?.length === 0) throw new Error('Transaction not found');
+
+    const oldTransaction = result.values![0] as TransactionEntity;
+
+    const updatedTransaction = {
+      ...oldTransaction,
+      ...data,
+      updated_at: Date.now(),
+      sync_status: SyncStatus.Pending,
+    };
+    const keys = Object.keys(data).filter((key) => key !== 'id');
+    const sqlUpdate = `UPDATE ${Entities.Transactions} SET ${keys.map((k) => `${k} = ?`).join(', ')}, updated_at = ?, sync_status = ? WHERE id = ? AND user_id = ?`;
+    const values = [
+      ...keys.map((key) => (data as any)[key]),
+      updatedTransaction.updated_at,
+      SyncStatus.Pending,
+      id,
+      userId,
+    ];
+
+    await this.databaseService.execute(sqlUpdate, values);
+
+    await this.handleBalanceRevert(oldTransaction, userId);
+
+    await this.handleBalanceUpdate(updatedTransaction, userId);
+
+    this.sync(userId);
+
+    return updatedTransaction;
+  }
+
+  async delete(id: string, userId: string) {
+    const sqlSelect = `SELECT * FROM ${Entities.Transactions} WHERE id = ? AND user_id = ? LIMIT 1`;
+    const result = await this.databaseService.query(sqlSelect, [id, userId]);
+
+    if (result.values?.length === 0) {
+      throw new Error('Transaction not found');
+    }
+
+    const transaction = result.values![0] as TransactionEntity;
+
+    const sqlUpdate = `UPDATE ${Entities.Transactions} SET is_deleted = 1, sync_status = ?, updated_at = ? WHERE id = ? AND user_id = ?`;
+    const values = [SyncStatus.Pending, Date.now(), transaction.id, userId];
+
+    await this.databaseService.execute(sqlUpdate, values);
+
+    await this.handleBalanceRevert(transaction, userId);
+
+    this.sync(userId);
+
+    return transaction;
   }
 
   protected override async afterSyncChanged(userId: string, changes: TransactionEntity[]) {
@@ -163,6 +220,20 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
           transaction.amount,
           userId,
         );
+      }
+    }
+  }
+
+  private async handleBalanceRevert(transaction: TransactionEntity, userId: string) {
+    const amount = transaction.amount;
+    if (transaction.type === TransactionType.Income) {
+      await this._walletService.updateBalanceLocal(transaction.wallet_id, -amount, userId);
+    } else if (transaction.type === TransactionType.Expense) {
+      await this._walletService.updateBalanceLocal(transaction.wallet_id, amount, userId);
+    } else if (transaction.type === TransactionType.Transfer) {
+      await this._walletService.updateBalanceLocal(transaction.wallet_id, amount, userId);
+      if (transaction.to_wallet_id) {
+        await this._walletService.updateBalanceLocal(transaction.to_wallet_id, -amount, userId);
       }
     }
   }
