@@ -6,32 +6,32 @@ import { IonRippleEffect } from '@ionic/angular/standalone';
   selector: 'num-pad',
   imports: [IonRippleEffect],
   template: `
-    <section class="flex-1 grid grid-cols-3 col-span-8 bg-neutral-800">
+    <section class="flex-1 grid grid-cols-3 col-span-8">
       @for (key of keys(); track key) {
-        <div
-          class="ion-activatable relative overflow-hidden text-center text-3xl font-light py-10"
+        <button
+          class="ion-activatable bg-neutral-800 text-neutral-400 relative overflow-hidden text-center text-3xl font-light py-10"
           (click)="handleKey(key)"
         >
           {{ key }}
           <ion-ripple-effect></ion-ripple-effect>
-        </div>
+        </button>
       }
     </section>
 
-    <section class="flex flex-col justify-evenly w-[20%] bg-neutral-900">
+    <section class="flex flex-col justify-evenly w-[20%]">
       @for (operator of operators(); track operator) {
-        <div
-          class="ion-activatable relative overflow-hidden text-center text-3xl font-light py-7"
+        <button
+          class="ion-activatable bg-neutral-900 text-neutral-400 relative overflow-hidden text-center text-3xl font-light py-7"
           (click)="handleOperator(operator)"
         >
           {{ operator }}
           <ion-ripple-effect></ion-ripple-effect>
-        </div>
+        </button>
       }
     </section>
   `,
   host: {
-    class: 'flex text-neutral-400',
+    class: 'flex',
   },
 })
 export class NumPad {

@@ -127,6 +127,9 @@ export class Login {
 
   loginWithGoogle() {
     this.status.set('loading');
-    this._authService.loginWithGoogle().finally(() => this.status.set('loaded'));
+    this._authService
+      .loginWithGoogle()
+      .catch((error) => alert(error))
+      .finally(() => this.status.set('loaded'));
   }
 }
