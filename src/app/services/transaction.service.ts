@@ -34,7 +34,7 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
     super(Entities.Transactions);
   }
 
-  async load(userId: string, options: TransactionLoadOptions) {
+  async fetch(userId: string, options: TransactionLoadOptions): Promise<TransactionEntity[]> {
     const { walletIds = [], categoryIds = [], startAt, endAt, pageSize, pageIndex } = options;
     const offset = pageIndex * pageSize;
 

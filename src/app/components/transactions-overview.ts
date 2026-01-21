@@ -1,4 +1,13 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 import {
   IonList,
   IonItem,
@@ -13,6 +22,7 @@ import {
   IonModal,
   IonSelect,
   IonSelectOption,
+  IonDatetime,
 } from '@ionic/angular/standalone';
 import { TransactionLoadOptions, TransactionService } from '../services/transaction.service';
 import { DatePipe, DecimalPipe } from '@angular/common';
@@ -26,6 +36,7 @@ import {
   endOfMonth,
   endOfWeek,
   endOfYear,
+  format,
   startOfDay,
   startOfMonth,
   startOfWeek,
@@ -33,6 +44,7 @@ import {
 } from 'date-fns';
 import { CategoryService } from '../services/category.service';
 import { FormsModule } from '@angular/forms';
+import { from, range, Subscription } from 'rxjs';
 
 type ScrollEvent = {
   target: {
@@ -43,7 +55,7 @@ type ScrollEvent = {
   };
 };
 
-type Period = 'today' | 'week' | 'month' | 'year';
+type Period = { value: 'today' | 'week' | 'month' | 'year' | 'custom'; label: string };
 
 @Component({
   selector: 'transactions-overview',
@@ -64,6 +76,7 @@ type Period = 'today' | 'week' | 'month' | 'year';
     IonSelect,
     IonSelectOption,
     FormsModule,
+    IonDatetime,
   ],
   template: `
     <ion-list-header class="my-2">
@@ -71,7 +84,12 @@ type Period = 'today' | 'week' | 'month' | 'year';
         <span class="text-base font-medium ">Last transactions overview</span>
 
         <p class="text-sm">
-          {{ applyingOptions().period.label }}
+          @if (applyingOptions().period.value === 'custom') {
+            {{ applyingOptions().customRange!.startAt | date: 'dd MMM' }} -
+            {{ applyingOptions().customRange!.endAt | date: 'dd MMM' }}
+          } @else {
+            {{ applyingOptions().period.label }}
+          }
         </p>
       </ion-label>
       <ion-button
@@ -173,20 +191,40 @@ type Period = 'today' | 'week' | 'month' | 'year';
 
           <div class="px-4 mb-2">
             <ion-select
+              class="custom-input"
               label="Select period"
               fill="solid"
               label-placement="floating"
               interface="popover"
               [(ngModel)]="processingOptions.period"
+              (ionChange)="handlePeriodChange($event)"
             >
               @for (period of periods; track period.value) {
                 <ion-select-option [value]="period">{{ period.label }}</ion-select-option>
               }
             </ion-select>
+
+            <ion-modal
+              #datePickerModal
+              [style.--width]="'fit-content'"
+              [style.--height]="'fit-content'"
+              [style.--border-radius]="'8px'"
+              [style.--backdrop-opacity]="'0.3'"
+            >
+              <ng-template>
+                <ion-datetime
+                  class="pt-2"
+                  presentation="date"
+                  [multiple]="true"
+                  (ionChange)="selectDateRange($event)"
+                ></ion-datetime>
+              </ng-template>
+            </ion-modal>
           </div>
 
           <div class="px-4">
             <ion-select
+              class="custom-input"
               label="Categories"
               fill="solid"
               label-placement="floating"
@@ -201,8 +239,14 @@ type Period = 'today' | 'week' | 'month' | 'year';
 
           <ion-item class="mt-4">
             <div class="flex justify-end items-center gap-2 w-full">
-              <ion-button fill="clear" (click)="optionsModal.dismiss()">Cancel</ion-button>
-              <ion-button fill="clear" (click)="saveOptions(); optionsModal.dismiss()"
+              <ion-button
+                fill="clear"
+                (click)="dismissOptionsModal(optionsModal, { saveOptions: false })"
+                >Cancel</ion-button
+              >
+              <ion-button
+                fill="clear"
+                (click)="dismissOptionsModal(optionsModal, { saveOptions: true })"
                 >Confirm</ion-button
               >
             </div>
@@ -219,106 +263,148 @@ type Period = 'today' | 'week' | 'month' | 'year';
 export class TransactionsOverview {
   private _transactionService = inject(TransactionService);
   private _authService = inject(AuthService);
+  private _datePickerModal = viewChild<IonModal>('datePickerModal');
+  private _cdr = inject(ChangeDetectorRef);
 
   fromWallets = input.required<Wallet[]>();
   TransactionType = TransactionType;
-  protected periods = [
+  protected periods: Period[] = [
     { label: 'Today', value: 'today' },
     { label: 'This week', value: 'week' },
     { label: 'This month', value: 'month' },
     { label: 'This year', value: 'year' },
+    { label: 'Custom', value: 'custom' },
   ];
 
   protected transactions = signal<Transaction[]>([]);
   protected hasMore = signal(true);
   protected categories = inject(CategoryService).categories;
 
-  protected processingOptions = {
+  protected processingOptions: {
+    period: Period;
+    categoryIds: string[];
+    previousPeriod?: Period;
+    customRange?: { startAt: number; endAt: number };
+  } = {
     period: this.periods[2],
-    categoryIds: [] as string[],
+    previousPeriod: this.periods[2],
+    categoryIds: [],
   };
 
-  protected applyingOptions = signal({ ...this.processingOptions, pageIndex: 0 });
+  protected applyingOptions = signal({ ...this.processingOptions });
 
   private _queryOptions = computed<TransactionLoadOptions>(() => {
     const filters = this.applyingOptions();
-    const range = this.getPeriodRange(filters.period.value);
+    const range =
+      filters.period.value === 'custom'
+        ? filters.customRange
+        : this.getPeriodRange(filters.period.value);
 
     return {
-      pageIndex: filters.pageIndex,
+      pageIndex: 0,
       pageSize: 10,
       walletIds: this.fromWallets().map((wallet) => wallet.id),
       categoryIds: filters.categoryIds,
-      startAt: range?.startAt,
-      endAt: range?.endAt,
+      ...range,
     };
   });
 
-  private _status: LoadingStatus = 'idle';
+  private _fetchSubscription?: Subscription;
 
   constructor() {
-    let previousOptionsToken = '';
-
-    // effect(async () => {
-    //   const wallets = this.fromWallets();
-
-    //   if (!wallets.length) return;
-
-    //   this._options.walletIds = this.fromWallets().map((wallet) => wallet.id);
-    //   this._options.pageIndex = 0;
-
-    //   const currentOptionsToken = JSON.stringify(this._options);
-
-    //   if (currentOptionsToken == previousOptionsToken) return;
-
-    //   previousOptionsToken = currentOptionsToken;
-
-    //   const transactions = await this.getTransactions();
-
-    //   this.transactions.set(transactions);
-    // });
-  }
-
-  async getTransactions() {
-    const user = this._authService.currentUser();
-
-    if (!user) return this.transactions();
-
-    if (this._status === 'loading') return this.transactions();
-
-    const options = this._queryOptions();
-
-    const transactions = await this._transactionService.load(user.uid, options);
-
-    this.hasMore.set(transactions.length >= options.pageSize);
-
-    this._status = 'loaded';
-
-    return transactions.map(TransactionMapper.toModel);
+    this.setupLoadByWallets();
   }
 
   async loadMore(event: ScrollEvent) {
-    this.applyingOptions.set({
-      ...this.applyingOptions(),
-      pageIndex: this.applyingOptions().pageIndex++,
-    });
-
-    const transactions = await this.getTransactions();
-
-    this.transactions.update((list) => [...list, ...transactions]);
-
+    this.fetchTransactions();
     await event.target.complete();
   }
 
-  async saveOptions() {
-    this.applyingOptions.set({
-      ...this.processingOptions,
-      pageIndex: 0,
+  async handlePeriodChange(event: { detail: { value: Period } }) {
+    const selected = event.detail.value;
+
+    if (selected?.value === 'custom') {
+      await this._datePickerModal()?.present();
+
+      const result = await this._datePickerModal()?.onDidDismiss();
+      const rangeData = result?.data;
+
+      if (rangeData) {
+        this.processingOptions.customRange = rangeData;
+      } else if (this.processingOptions.previousPeriod) {
+        this.processingOptions.period = this.processingOptions.previousPeriod;
+        this._cdr.detectChanges();
+      }
+    } else {
+      this.processingOptions.previousPeriod = selected;
+    }
+  }
+
+  selectDateRange(event: { detail: { value?: string[] | string | null | undefined } }) {
+    const dates = event.detail.value;
+    if (Array.isArray(dates) && dates.length >= 2) {
+      const sorted = [...dates].sort();
+
+      const range = {
+        startAt: startOfDay(new Date(sorted[0])).getTime(),
+        endAt: endOfDay(new Date(sorted[sorted.length - 1])).getTime(),
+      };
+
+      this._datePickerModal()?.dismiss(range);
+    }
+  }
+
+  async dismissOptionsModal(modal: IonModal, { saveOptions }: { saveOptions: boolean }) {
+    await modal.dismiss();
+
+    if (saveOptions) {
+      this.applyingOptions.set({
+        period: this.processingOptions.period,
+        customRange: this.processingOptions.customRange,
+        categoryIds: [...this.processingOptions.categoryIds],
+      });
+
+      this.fetchTransactions({ reset: true });
+    } else {
+      this.processingOptions.categoryIds = this.applyingOptions().categoryIds;
+      this.processingOptions.period = this.applyingOptions().period;
+      this.processingOptions.previousPeriod = this.applyingOptions().period;
+      this.processingOptions.customRange = undefined;
+    }
+  }
+
+  //#region Private methods
+  private fetchTransactions({ reset }: { reset: boolean } = { reset: false }) {
+    if (reset === false && !this.hasMore()) return;
+
+    const user = this._authService.currentUser();
+
+    if (!user) throw Error('No user found while fetching transactions');
+
+    const options = { ...this._queryOptions() };
+
+    if (!options.walletIds?.length) throw Error('No wallets found while fetching transactions');
+
+    if (reset) {
+      options.pageIndex = 0;
+    } else {
+      options.pageIndex++;
+    }
+
+    this._fetchSubscription?.unsubscribe();
+    this._fetchSubscription = from(this._transactionService.fetch(user.uid, options)).subscribe({
+      next: (entities) => {
+        const models = entities.map(TransactionMapper.toModel);
+
+        if (reset) {
+          this.transactions.set(models);
+        } else {
+          this.transactions.update((list) => [...list, ...models]);
+        }
+
+        this.hasMore.set(models.length >= options.pageSize);
+      },
     });
-
-    const transactions = await this.getTransactions();
-
-    this.transactions.set(transactions);
   }
 
   private getPeriodRange(type: string) {
@@ -352,4 +438,15 @@ export class TransactionsOverview {
       endAt: end.getTime(),
     };
   }
+
+  private setupLoadByWallets() {
+    effect(async () => {
+      const wallets = this.fromWallets();
+
+      if (!wallets.length) return;
+
+      this.fetchTransactions({ reset: true });
+    });
+  }
+  //#endregion
 }
