@@ -18,6 +18,7 @@ import { TransactionService } from '../services/transaction.service';
 import { WalletService } from '../services/wallet.service';
 import { TransactionsOverview } from '../components/transactions-overview';
 import { Wallet } from '../models/wallet';
+import { ExpensesStructure } from '../components/expenses-structure';
 
 @Component({
   selector: 'home',
@@ -33,6 +34,7 @@ import { Wallet } from '../models/wallet';
     RouterLink,
     IonFabList,
     TransactionsOverview,
+    ExpensesStructure,
   ],
   template: `
     <ion-content>
@@ -46,6 +48,8 @@ import { Wallet } from '../models/wallet';
         class="block px-3 pb-4 border-b border-(--ion-text-color-step-800)"
         (walletsSelected)="selectedWallets.set($event)"
       ></wallets>
+
+      <expenses-structure class="mt-2 mx-3" [fromWallets]="selectedWallets()"></expenses-structure>
 
       <transactions-overview
         class="mt-2 mx-3"

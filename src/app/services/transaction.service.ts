@@ -8,6 +8,7 @@ import { WalletService } from './wallet.service';
 export interface TransactionLoadOptions {
   walletIds?: string[];
   categoryIds?: string[];
+  type?: TransactionType;
   startAt?: number;
   endAt?: number;
   pageIndex: number;
@@ -35,7 +36,7 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
   }
 
   async fetch(userId: string, options: TransactionLoadOptions): Promise<TransactionEntity[]> {
-    const { walletIds = [], categoryIds = [], startAt, endAt, pageSize, pageIndex } = options;
+    const { walletIds = [], categoryIds = [], type, startAt, endAt, pageSize, pageIndex } = options;
     const offset = pageIndex * pageSize;
 
     const params: any[] = [userId];
@@ -51,6 +52,11 @@ export class TransactionService extends SyncableEntityService<TransactionEntity>
       const placeholders = categoryIds.map(() => '?').join(',');
       filterSql += ` AND t.category_id IN (${placeholders})`;
       params.push(...categoryIds);
+    }
+
+    if (type) {
+      filterSql += ` AND t.type = ?`;
+      params.push(type);
     }
 
     if (startAt) {

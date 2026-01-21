@@ -3,175 +3,98 @@ import {
   Component,
   computed,
   effect,
+  ElementRef,
   inject,
   input,
   signal,
   viewChild,
 } from '@angular/core';
+import { Wallet } from '../models/wallet';
 import {
-  IonList,
-  IonItem,
+  IonListHeader,
+  IonLabel,
   IonButton,
   IonIcon,
-  IonLabel,
-  IonInfiniteScroll,
-  IonInfiniteScrollContent,
-  IonThumbnail,
-  IonSkeletonText,
-  IonListHeader,
   IonModal,
+  IonList,
   IonSelect,
   IonSelectOption,
   IonDatetime,
+  IonItem,
 } from '@ionic/angular/standalone';
 import { TransactionLoadOptions, TransactionService } from '../services/transaction.service';
-import { DatePipe, DecimalPipe } from '@angular/common';
-import { TransactionType } from '../entities/transaction';
 import { AuthService } from '../services/auth.service';
-import { LoadingStatus } from '../models/loading-status';
-import { Wallet } from '../models/wallet';
-import { Transaction, TransactionMapper } from '../models/transaction';
+import { Period } from '../models';
 import {
   endOfDay,
   endOfMonth,
   endOfWeek,
   endOfYear,
-  format,
   startOfDay,
   startOfMonth,
   startOfWeek,
   startOfYear,
 } from 'date-fns';
-import { CategoryService } from '../services/category.service';
+import { from, Subscription } from 'rxjs';
+import { Transaction, TransactionMapper } from '../models/transaction';
+import { DatePipe, DecimalPipe } from '@angular/common';
+import { EChartsOption, EChartsType } from 'echarts';
+import * as echarts from 'echarts';
+import { TransactionType } from '../entities/transaction';
 import { FormsModule } from '@angular/forms';
-import { from, range, Subscription } from 'rxjs';
-import { Period } from '../models';
-
-type ScrollEvent = {
-  target: {
-    complete: () => Promise<void>;
-    disabled: boolean;
-    position: 'top' | 'bottom';
-    threshold: string;
-  };
-};
 
 @Component({
-  selector: 'transactions-overview',
+  selector: 'expenses-structure',
   imports: [
-    IonList,
-    IonItem,
+    IonListHeader,
+    IonLabel,
     IonButton,
     IonIcon,
-    IonLabel,
     DatePipe,
     DecimalPipe,
-    IonInfiniteScroll,
-    IonInfiniteScrollContent,
-    IonThumbnail,
-    IonSkeletonText,
-    IonListHeader,
     IonModal,
+    IonList,
     IonSelect,
-    IonSelectOption,
     FormsModule,
+    IonSelectOption,
     IonDatetime,
+    IonItem,
   ],
   template: `
     <ion-list-header class="my-2">
       <ion-label>
-        <span class="text-base font-medium ">Last transactions overview</span>
+        <span class="text-base font-medium ">Expenses structures</span>
 
         <p class="text-sm">
-          @if (applyingOptions().period.value === 'custom') {
-            {{ applyingOptions().customRange!.startAt | date: 'dd MMM' }} -
-            {{ applyingOptions().customRange!.endAt | date: 'dd MMM' }}
+          @if (applyingDataOptions().period.value === 'custom') {
+            {{ applyingDataOptions().customRange!.startAt | date: 'dd MMM' }} -
+            {{ applyingDataOptions().customRange!.endAt | date: 'dd MMM' }}
           } @else {
-            {{ applyingOptions().period.label }}
+            {{ applyingDataOptions().period.label }}
           }
         </p>
       </ion-label>
       <ion-button
+        (click)="optionsModal.present()"
         shape="round"
         [style.--color]="'var(--ion-text-color-step-300)'"
-        (click)="optionsModal.present()"
       >
         <ion-icon slot="icon-only" name="ellipsis-vertical"></ion-icon>
       </ion-button>
     </ion-list-header>
 
-    <div class="overflow-y-auto max-h-128 ion-content-scroll-host">
-      <ion-list lines="full">
-        @for (item of transactions(); track item.id) {
-          <ion-item>
-            <ion-button
-              slot="start"
-              shape="round"
-              class="mr-4 w-9 h-9 my-2"
-              [style.--background]="item.category?.color"
-            >
-              <ion-icon
-                slot="icon-only"
-                class="text-white text-xl"
-                [name]="item.category?.icon"
-              ></ion-icon>
-            </ion-button>
+    <h4 class="mx-4 mt-0">
+      {{ totalExpenses() | number: '1.0-3' }}
+    </h4>
 
-            <ion-label>
-              <span class="text-sm font-medium">{{ item.category?.name }}</span>
+    <div class="relative h-96 w-full px-2 pb-2">
+      <div #chart class="h-full w-full"></div>
 
-              <p class="text-sm">
-                <span>{{ item.wallet?.name }}</span>
-
-                @if (item.toWallet) {
-                  <span> → {{ item.toWallet.name }}</span>
-                }
-              </p>
-            </ion-label>
-
-            <ion-label slot="end" class="text-end">
-              <span
-                class="text-sm font-medium"
-                [class.text-red-500]="item.type === TransactionType.Expense"
-                [class.text-emerald-500]="item.type === TransactionType.Income"
-              >
-                {{ item.type === TransactionType.Expense ? '-' : ''
-                }}{{ item.amount | number: '1.0-3' }}
-              </span>
-
-              <p class="text-sm">{{ item.updatedAt | date: 'dd MMM' }}</p>
-            </ion-label>
-          </ion-item>
-        } @empty {
-          <ion-item>
-            <ion-label class="w-full text-center text-sm! opacity-50"
-              >No transactions available yet.</ion-label
-            >
-          </ion-item>
-        }
-      </ion-list>
-
-      <ion-infinite-scroll [disabled]="!hasMore()" (ionInfinite)="loadMore($event)">
-        <ion-infinite-scroll-content loadingSpinner="none" class="*:last:hidden!">
-          <ion-list lines="none">
-            <ion-item [style.--border-radius]="'9999px'">
-              <ion-thumbnail slot="start" [style.--border-radius]="'9999px'">
-                <ion-skeleton-text [animated]="true"></ion-skeleton-text>
-              </ion-thumbnail>
-              <ion-label>
-                <h3>
-                  <ion-skeleton-text [animated]="true"></ion-skeleton-text>
-                </h3>
-                <p>
-                  <ion-skeleton-text [animated]="true" style="width: 75%;"></ion-skeleton-text>
-                </p>
-                <p>
-                  <ion-skeleton-text [animated]="true" style="width: 50%;"></ion-skeleton-text>
-                </p>
-              </ion-label> </ion-item
-          ></ion-list>
-        </ion-infinite-scroll-content>
-      </ion-infinite-scroll>
+      @if (!transactions().length) {
+        <div class="absolute inset-0 grid place-content-center">
+          <p class="text-center text-sm! opacity-50">No expenses available yet.</p>
+        </div>
+      }
     </div>
 
     <ion-modal
@@ -194,7 +117,7 @@ type ScrollEvent = {
               fill="solid"
               label-placement="floating"
               interface="popover"
-              [(ngModel)]="processingOptions.period"
+              [(ngModel)]="processingDataOptions.period"
               (ionChange)="handlePeriodChange($event)"
             >
               @for (period of periods; track period.value) {
@@ -220,21 +143,6 @@ type ScrollEvent = {
             </ion-modal>
           </div>
 
-          <div class="px-4">
-            <ion-select
-              class="custom-input"
-              label="Categories"
-              fill="solid"
-              label-placement="floating"
-              [multiple]="true"
-              [(ngModel)]="processingOptions.categoryIds"
-            >
-              @for (cat of categories(); track cat.id) {
-                <ion-select-option [value]="cat.id">{{ cat.name }}</ion-select-option>
-              }
-            </ion-select>
-          </div>
-
           <ion-item class="mt-4">
             <div class="flex justify-end items-center gap-2 w-full">
               <ion-button
@@ -258,14 +166,14 @@ type ScrollEvent = {
       'block overflow-hidden rounded-xl border border-(--ion-background-color-step-150) bg-(--ion-background-color-step-50)',
   },
 })
-export class TransactionsOverview {
+export class ExpensesStructure {
   private _transactionService = inject(TransactionService);
   private _authService = inject(AuthService);
   private _datePickerModal = viewChild<IonModal>('datePickerModal');
   private _cdr = inject(ChangeDetectorRef);
+  private _chartElementRef = viewChild.required<ElementRef<HTMLDivElement>>('chart');
 
   fromWallets = input.required<Wallet[]>();
-  TransactionType = TransactionType;
   protected periods: Period[] = [
     { label: 'Today', value: 'today' },
     { label: 'This week', value: 'week' },
@@ -275,24 +183,89 @@ export class TransactionsOverview {
   ];
 
   protected transactions = signal<Transaction[]>([]);
-  protected hasMore = signal(true);
-  protected categories = inject(CategoryService).categories;
 
-  protected processingOptions: {
+  protected totalExpenses = computed(() =>
+    this.transactions().reduce((total, transaction) => (total += transaction.amount), 0),
+  );
+
+  private _chart = signal<EChartsType | null>(null);
+  private _chartOptions = computed<EChartsOption>(() => {
+    const transactions = this.transactions();
+    const bodyStyle = getComputedStyle(document.body);
+
+    const categoryMap = transactions.reduce(
+      (result, transaction) => {
+        const colorVar = transaction.category!.color!;
+
+        const color = this.oklchToRgb(
+          bodyStyle.getPropertyValue(colorVar.replace(/^var\(|\)$/g, '')),
+        );
+
+        const categoryName = transaction.category!.name!;
+
+        if (!result[categoryName]) {
+          result[categoryName] = {
+            name: categoryName,
+            value: 0,
+            itemStyle: { color },
+          };
+        }
+
+        result[categoryName].value += transaction.amount;
+
+        return result;
+      },
+      {} as Record<string, { name: string; value: number; itemStyle: any }>,
+    );
+
+    const chartData = Object.values(categoryMap);
+
+    return {
+      darkMode: true,
+      tooltip: {
+        trigger: 'item',
+        confine: true,
+      },
+      legend: {
+        bottom: '0',
+        left: 'center',
+        type: 'scroll',
+        textStyle: { color: '#c3c5d8' },
+        pageIconColor: '#c3c5d8',
+        pageTextStyle: {
+          color: '#c3c5d8',
+        },
+      },
+      series: [
+        {
+          type: 'pie',
+          radius: ['40%', '70%'],
+          center: ['50%', '45%'],
+          avoidLabelOverlap: true,
+          stillShowZeroSum: false,
+          showEmptyCircle: false,
+          data: chartData,
+          label: {
+            show: false,
+          },
+        },
+      ],
+    };
+  });
+
+  protected processingDataOptions: {
     period: Period;
-    categoryIds: string[];
     previousPeriod?: Period;
     customRange?: { startAt: number; endAt: number };
   } = {
     period: this.periods[2],
     previousPeriod: this.periods[2],
-    categoryIds: [],
   };
 
-  protected applyingOptions = signal({ ...this.processingOptions });
+  protected applyingDataOptions = signal({ ...this.processingDataOptions });
 
   private _queryOptions = computed<TransactionLoadOptions>(() => {
-    const filters = this.applyingOptions();
+    const filters = this.applyingDataOptions();
     const range =
       filters.period.value === 'custom'
         ? filters.customRange
@@ -300,22 +273,33 @@ export class TransactionsOverview {
 
     return {
       pageIndex: 0,
-      pageSize: 10,
+      pageSize: 99999,
+      type: TransactionType.Expense,
       walletIds: this.fromWallets().map((wallet) => wallet.id),
-      categoryIds: filters.categoryIds,
       ...range,
     };
   });
 
   private _fetchSubscription?: Subscription;
 
+  private _resizeObserver?: ResizeObserver;
+
   constructor() {
     this.setupLoadByWallets();
+
+    effect(() => {
+      this._chart()?.setOption(this._chartOptions(), true);
+    });
   }
 
-  async loadMore(event: ScrollEvent) {
-    this.fetchTransactions();
-    await event.target.complete();
+  ngAfterViewInit() {
+    this._chart.set(echarts.init(this._chartElementRef().nativeElement));
+
+    this._resizeObserver = new ResizeObserver(() => {
+      this._chart()?.resize();
+    });
+
+    this._resizeObserver.observe(this._chartElementRef().nativeElement);
   }
 
   async handlePeriodChange(event: { detail: { value: Period } }) {
@@ -328,13 +312,13 @@ export class TransactionsOverview {
       const rangeData = result?.data;
 
       if (rangeData) {
-        this.processingOptions.customRange = rangeData;
-      } else if (this.processingOptions.previousPeriod) {
-        this.processingOptions.period = this.processingOptions.previousPeriod;
+        this.processingDataOptions.customRange = rangeData;
+      } else if (this.processingDataOptions.previousPeriod) {
+        this.processingDataOptions.period = this.processingDataOptions.previousPeriod;
         this._cdr.detectChanges();
       }
     } else {
-      this.processingOptions.previousPeriod = selected;
+      this.processingDataOptions.previousPeriod = selected;
     }
   }
 
@@ -356,25 +340,21 @@ export class TransactionsOverview {
     await modal.dismiss();
 
     if (saveOptions) {
-      this.applyingOptions.set({
-        period: this.processingOptions.period,
-        customRange: this.processingOptions.customRange,
-        categoryIds: [...this.processingOptions.categoryIds],
+      this.applyingDataOptions.set({
+        period: this.processingDataOptions.period,
+        customRange: this.processingDataOptions.customRange,
       });
 
-      this.fetchTransactions({ reset: true });
+      this.fetchTransactions();
     } else {
-      this.processingOptions.categoryIds = this.applyingOptions().categoryIds;
-      this.processingOptions.period = this.applyingOptions().period;
-      this.processingOptions.previousPeriod = this.applyingOptions().period;
-      this.processingOptions.customRange = undefined;
+      this.processingDataOptions.period = this.applyingDataOptions().period;
+      this.processingDataOptions.previousPeriod = this.applyingDataOptions().period;
+      this.processingDataOptions.customRange = undefined;
     }
   }
 
   //#region Private methods
-  private fetchTransactions({ reset }: { reset: boolean } = { reset: false }) {
-    if (reset === false && !this.hasMore()) return;
-
+  private fetchTransactions() {
     const user = this._authService.currentUser();
 
     if (!user) throw Error('No user found while fetching transactions');
@@ -383,24 +363,12 @@ export class TransactionsOverview {
 
     if (!options.walletIds?.length) throw Error('No wallets found while fetching transactions');
 
-    if (reset) {
-      options.pageIndex = 0;
-    } else {
-      options.pageIndex++;
-    }
-
     this._fetchSubscription?.unsubscribe();
     this._fetchSubscription = from(this._transactionService.fetch(user.uid, options)).subscribe({
       next: (entities) => {
         const models = entities.map(TransactionMapper.toModel);
 
-        if (reset) {
-          this.transactions.set(models);
-        } else {
-          this.transactions.update((list) => [...list, ...models]);
-        }
-
-        this.hasMore.set(models.length >= options.pageSize);
+        this.transactions.set(models);
       },
     });
   }
@@ -443,8 +411,41 @@ export class TransactionsOverview {
 
       if (!wallets.length) return;
 
-      this.fetchTransactions({ reset: true });
+      this.fetchTransactions();
     });
   }
+
+  private oklchToRgb(oklchStr: string): string {
+    const matches = oklchStr.match(/([\d.]+)%?\s+([\d.]+)\s+([\d.]+)/);
+    if (!matches) return oklchStr;
+
+    let l = parseFloat(matches[1]) / (oklchStr.includes('%') ? 100 : 1);
+    let c = parseFloat(matches[2]);
+    let h = parseFloat(matches[3]) * (Math.PI / 180);
+
+    let a = c * Math.cos(h);
+    let b = c * Math.sin(h);
+
+    let l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+    let m_ = l - 0.1055613458 * a - 0.0638541728 * b;
+    let s_ = l - 0.0894841775 * a - 1.291485548 * b;
+
+    l_ = Math.pow(Math.max(0, l_), 3);
+    m_ = Math.pow(Math.max(0, m_), 3);
+    s_ = Math.pow(Math.max(0, s_), 3);
+
+    let r = +4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_;
+    let g = -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_;
+    let b_ = -0.0041960863 * l_ - 0.7034186147 * m_ + 1.707614701 * s_;
+
+    const f = (c: number) => (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055);
+
+    return `rgb(${Math.round(f(r) * 255)}, ${Math.round(f(g) * 255)}, ${Math.round(f(b_) * 255)})`;
+  }
   //#endregion
+
+  ngOnDestroy(): void {
+    this._resizeObserver?.disconnect();
+    this._chart()?.dispose();
+  }
 }
