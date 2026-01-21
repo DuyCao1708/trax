@@ -1,21 +1,9 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Wallets } from '../components/wallets';
 import { Header } from '../components/header';
-import {
-  IonContent,
-  IonRefresher,
-  IonRefresherContent,
-  RefresherCustomEvent,
-  IonFab,
-  IonFabButton,
-  IonIcon,
-  IonFabList,
-} from '@ionic/angular/standalone';
-import { AuthService } from '../services/auth.service';
-import { SyncService } from '../services/sync.service';
+import { IonContent, IonFab, IonFabButton, IonIcon, IonFabList } from '@ionic/angular/standalone';
 import { RouterLink } from '@angular/router';
 import { TransactionService } from '../services/transaction.service';
-import { WalletService } from '../services/wallet.service';
 import { TransactionsOverview } from '../components/transactions-overview';
 import { Wallet } from '../models/wallet';
 import { ExpensesStructure } from '../components/expenses-structure';
@@ -24,8 +12,6 @@ import { ExpensesStructure } from '../components/expenses-structure';
   selector: 'home',
   imports: [
     IonContent,
-    IonRefresher,
-    IonRefresherContent,
     Wallets,
     Header,
     IonFab,
@@ -38,10 +24,6 @@ import { ExpensesStructure } from '../components/expenses-structure';
   ],
   template: `
     <ion-content>
-      <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
-        <ion-refresher-content></ion-refresher-content>
-      </ion-refresher>
-
       <header></header>
 
       <wallets
@@ -96,28 +78,11 @@ import { ExpensesStructure } from '../components/expenses-structure';
   `,
 })
 export class Home {
-  private _authService = inject(AuthService);
-  private _syncService = inject(SyncService);
   private _transactionService = inject(TransactionService);
-  private _walletService = inject(WalletService);
 
   protected readonly transactionTypes = this._transactionService.types;
 
   protected selectedWallets = signal<Wallet[]>([]);
-
-  async handleRefresh(event: RefresherCustomEvent) {
-    try {
-      const userId = this._authService.currentUser()?.uid;
-      if (userId) {
-        await this._syncService.syncAll(userId);
-        this._walletService.load(userId);
-      }
-    } catch (error) {
-      console.error('Lỗi khi refresh:', error);
-    } finally {
-      event.target.complete();
-    }
-  }
 }
 
 // async ngOnInit() {
