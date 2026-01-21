@@ -218,7 +218,7 @@ export class ExpensesStructure {
       {} as Record<string, { name: string; value: number; itemStyle: any }>,
     );
 
-    const chartData = Object.values(categoryMap);
+    const chartData = Object.values(categoryMap).sort((a, b) => b.value - a.value);
 
     return {
       darkMode: true,
