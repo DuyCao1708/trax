@@ -18,12 +18,12 @@ This project is licensed under the **MIT License**. Feel free to use, modify, an
 *See the [LICENSE](LICENSE) file for more details.*
 
 ## ✨ Key Features
-* ** Real-time Cloud Sync:** Keep your data consistent across multiple devices. Never lose your financial records thanks to Firebase integration.
-* ** Wallet & Category Management:** Fully customizable system to add, edit, or delete wallets and expense categories to fit your lifestyle.
-* ** Full Transaction CRUD:** Easily Create, Read, Update, and Delete your transactions with a clean and user-friendly interface.
-* ** Advanced Filtering:** Quickly analyze your spending with powerful filters by **Time (Date Range)** and **Specific Categories**.
-* ** Expense Structure Visualization:** Gain a clear understanding of where your money goes with a detailed breakdown of your expense structure.
-* ** Secure Google Login:** Quick and secure access using your Google account via Firebase Authentication.
+* **Real-time Cloud Sync:** Keep your data consistent across multiple devices. Never lose your financial records thanks to Firebase integration.
+* **Wallet & Category Management:** Fully customizable system to add, edit, or delete wallets and expense categories to fit your lifestyle.
+* **Full Transaction CRUD:** Easily Create, Read, Update, and Delete your transactions with a clean and user-friendly interface.
+* **Advanced Filtering:** Quickly analyze your spending with powerful filters by **Time (Date Range)** and **Specific Categories**.
+* **Expense Structure Visualization:** Gain a clear understanding of where your money goes with a detailed breakdown of your expense structure.
+* **Secure Google Login:** Quick and secure access using your Google account via Firebase Authentication.
 
 ## 🔒 Data Privacy & Security
 
