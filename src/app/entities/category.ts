@@ -1,5 +1,8 @@
-export interface CategoryEntity {
-  id: number;
+import { SyncableEntity } from '.';
+
+export interface CategoryEntity extends SyncableEntity {
   name: string;
-  parent_id: number;
+  icon: string;
+  color: string;
+  parent_id?: string;
 }

@@ -1,0 +1,25 @@
+import { CategoryEntity } from '../entities/category';
+import { Mapper } from './mapper';
+
+export interface Category extends Omit<
+  CategoryEntity,
+  'parent_id' | 'user_id' | 'updated_at' | 'sync_status' | 'is_deleted'
+> {
+  parentId?: string;
+  subCategories?: Category[];
+  parentCategory?: Category;
+  isDeleted: boolean;
+}
+
+export const CategoryMapper: Mapper<CategoryEntity, Category> = {
+  toModel(entity: CategoryEntity): Category {
+    return {
+      id: entity.id,
+      name: entity.name,
+      icon: entity.icon,
+      color: `var(--color-${entity.color}-500)`,
+      parentId: entity.parent_id || undefined,
+      isDeleted: entity.is_deleted == 1,
+    };
+  },
+};

@@ -5,11 +5,7 @@ import { FirebaseService } from './firebase.service';
   providedIn: 'root',
 })
 export class AiService {
-  private _firebaseService = inject(FirebaseService);
-
-  private get _model() {
-    return this._firebaseService.generativeModel;
-  }
+  private _model = inject(FirebaseService).generativeModel;
 
   async prompt(data: string) {
     if (!this._model) {

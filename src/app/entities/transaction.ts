@@ -1,14 +1,22 @@
-export interface TransactionEntity {
+import { SyncableEntity } from '.';
+
+export interface TransactionEntity extends SyncableEntity {
   type: TransactionType;
   amount: number;
-  date: Date;
-  category: string;
+  category_id?: string;
+  category_color?: string;
+  category_icon?: string;
+  category_name?: string;
   wallet_id: string;
-  counter_party: string;
-  note: string;
+  wallet_name?: string;
+  to_wallet_id?: string;
+  to_wallet_name?: string;
+  counter_party?: string;
+  note?: string;
 }
 
 export enum TransactionType {
-  In = 0,
-  Out = 1,
+  Income = 0,
+  Expense = 1,
+  Transfer = 2,
 }
