@@ -277,7 +277,7 @@ export class TransactionsOverview {
   ];
 
   protected transactions = signal<Transaction[]>([]);
-  protected hasMore = signal(true);
+  protected hasMore = signal(false);
   protected categories = inject(CategoryService).categories;
 
   protected processingOptions: {
