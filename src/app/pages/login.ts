@@ -30,10 +30,7 @@ import { LoadingStatus } from '../models/loading-status';
         </div>
 
         <div class="flex flex-col items-center gap-2 mx-8">
-          <p class="text-gray-500">
-            Already have an account?
-            <a class="font-medium">Sign in</a>
-          </p>
+          <p class="text-gray-500">Get started with your Google account</p>
 
           <!-- <ion-button expand="block" class="w-full" (click)="loginWithFacebook()">
             Sign up with Facebook
@@ -56,7 +53,7 @@ import { LoadingStatus } from '../models/loading-status';
             @if (status() === 'loading') {
               <ion-spinner name="dots"></ion-spinner>
             } @else {
-              Sign up with Google
+              Sign in with Google
 
               <div class="ms-2 bg-white rounded-full w-7 h-7 grid place-content-center">
                 <svg
