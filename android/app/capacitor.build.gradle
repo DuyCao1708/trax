@@ -19,7 +19,6 @@ dependencies {
     implementation project(':capacitor-privacy-screen')
     implementation project(':capacitor-share')
     implementation project(':capgo-capacitor-native-biometric')
-    implementation project(':notification-reader')
 
 }
 
